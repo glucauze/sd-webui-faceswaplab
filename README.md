@@ -1,6 +1,6 @@
 # FaceSwapLab 1.1 for a1111/Vlad
 
-Please read the documentation here : http://glucause.github.io/sd-webui-faceswaplab/
+Please read the documentation here : https://glucauze.github.io/sd-webui-faceswaplab/
 
 FaceSwapLab is an extension for Stable Diffusion that simplifies face-swapping. It has evolved from sd-webui-faceswap and some part of sd-webui-roop. However, a substantial amount of the code has been rewritten to improve performance and to better manage masks.
 
@@ -53,4 +53,4 @@ While FaceSwapLab is still under development, it has reached a good level of sta
 
 ## Installation
 
-See the documentation here : http://glucause.github.io/sd-webui-faceswaplab/
+See the documentation here : https://glucauze.github.io/sd-webui-faceswaplab/
