@@ -46,7 +46,7 @@ The segmentation mask for the upscaled swapper is designed to avoid the square m
 
 #### How to increase speed of upscaled inswapper?
 
-It is possible to choose LANCZOS for speed if Codeformer is enabled in the upscaled inswapper. The result is generally satisfactory. 
+It is possible to choose LANCZOS for speed if Codeformer is enabled in the upscaled inswapper. The result is generally satisfactory.
 
 #### Sharpening and color correction in upscaled swapper :
 
@@ -56,7 +56,7 @@ Sharpening can provide more natural results, but it may also add artifacts. The 
 
 If you do not see any extensions after restarting, it is likely due to missing requirements, particularly if you're using Windows. Follow the instructions below:
 
-1. Verify that there are no error messages in the terminal. 
+1. Verify that there are no error messages in the terminal.
 2. Double-check the Installation section of this document to ensure all the steps have been followed.
 
 If you are running a specific configuration (for example, Python 3.11), please test the extension with a clean installation of the stable version of Diffusion before reporting an issue. This can help isolate whether the problem is related to your specific configuration or a broader issue with the extension.
@@ -65,14 +65,14 @@ If you are running a specific configuration (for example, Python 3.11), please t
 
 The model used in this extension initially reduces the resolution of the target face before generating a 128x128 image. This means that regardless of the original image's size, the resolution of the processed faces will not exceed 128x128. Consequently, this lower resolution might lead to quality limitations in the results.
 
-The output of this process might not meet high expectations, but the use of the face restorer and upscaler can help improve these results to some extent. 
+The output of this process might not meet high expectations, but the use of the face restorer and upscaler can help improve these results to some extent.
 
 The quality of results is inherently tied to the capabilities of the model and cannot be enhanced beyond its design. FaceSwapLab merely provides an interface for the underlying model. Therefore, unless the model from insighface is retrained and necessary alterations are made in the library (see below), the resulting quality may not meet high expectations.
 
 Consider this extension as a low-cost alternative to more sophisticated tools like Lora, or as an addition to such tools. It's important to **maintain realistic expectations of the results** provided by this extension.
 
 
-#### Issue: Incorrect Gender Detection 
+#### Issue: Incorrect Gender Detection
 
 The gender detection functionality is handled by the underlying analysis model. As such, there might be instances where the detected gender may not be accurate. This is a limitation of the model and we currently do not have a way to improve this accuracy from our end.
 

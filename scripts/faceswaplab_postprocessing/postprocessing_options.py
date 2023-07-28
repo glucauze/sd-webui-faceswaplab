@@ -4,11 +4,13 @@ from dataclasses import dataclass
 from modules import shared
 from enum import Enum
 
+
 class InpaintingWhen(Enum):
     NEVER = "Never"
     BEFORE_UPSCALING = "Before Upscaling/all"
     BEFORE_RESTORE_FACE = "After Upscaling/Before Restore Face"
     AFTER_ALL = "After All"
+
 
 @dataclass
 class PostProcessingOptions:
@@ -19,15 +21,15 @@ class PostProcessingOptions:
     upscaler_name: str = ""
     scale: int = 1
     upscale_visibility: float = 0.5
-    
-    inpainting_denoising_strengh : float = 0
-    inpainting_prompt : str = ""
-    inpainting_negative_prompt : str = ""
-    inpainting_steps : int = 20
-    inpainting_sampler : str = "Euler"
-    inpainting_when : InpaintingWhen = InpaintingWhen.BEFORE_UPSCALING
-    inpainting_model : str = "Current"
-    
+
+    inpainting_denoising_strengh: float = 0
+    inpainting_prompt: str = ""
+    inpainting_negative_prompt: str = ""
+    inpainting_steps: int = 20
+    inpainting_sampler: str = "Euler"
+    inpainting_when: InpaintingWhen = InpaintingWhen.BEFORE_UPSCALING
+    inpainting_model: str = "Current"
+
     @property
     def upscaler(self) -> UpscalerData:
         for upscaler in shared.sd_upscalers:

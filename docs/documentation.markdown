@@ -92,7 +92,7 @@ The purpose of this feature is to enhance the quality of the face in the final i
 
 The upscaled inswapper is disabled by default. It can be enabled in the sd options. Understanding the various steps helps explain why results may be unsatisfactory and how to address this issue.
 
-+ **upscaler** : LDSR if None. The LDSR option generally gives the best results but at the expense of a lot of computational time. You should test other models to form an opinion. The 003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN model seems to give good results in a reasonable amount of time. It's not possible to disable upscaling, but it is possible to choose LANCZOS for speed if Codeformer is enabled in the upscaled inswapper. The result is generally satisfactory. 
++ **upscaler** : LDSR if None. The LDSR option generally gives the best results but at the expense of a lot of computational time. You should test other models to form an opinion. The 003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN model seems to give good results in a reasonable amount of time. It's not possible to disable upscaling, but it is possible to choose LANCZOS for speed if Codeformer is enabled in the upscaled inswapper. The result is generally satisfactory.
 + **restorer** : The face restorer to be used if necessary. Codeformer generally gives good results.
 + **sharpening** can provide more natural results, but it may also add artifacts. The same goes for **color correction**. By default, these options are set to False.
 + **improved mask:** The segmentation mask for the upscaled swapper is designed to avoid the square mask and prevent degradation of the non-face parts of the image. It is based on the Codeformer implementation. If "Use improved segmented mask (use pastenet to mask only the face)" and "upscaled inswapper" are checked in the settings, the mask will only cover the face, and will not be squared. However, depending on the image, this might introduce different types of problems such as artifacts on the border of the face.
@@ -129,36 +129,36 @@ Here are the parameters that can be configured in sd settings and their default 
 
 ### General Settings :
 
- Name | Description | Default Value 
+ Name | Description | Default Value
 ---|---|---
- faceswaplab_model | Insightface model to use| models[0] if len(models) &gt; 0 else "None" 
- faceswaplab_keep_original | keep original image before swapping. It true, will show original image | False 
- faceswaplab_units_count | How many faces units to use(requires restart) | 3 
- faceswaplab_detection_threshold | Detection threshold to use to detect face, if low will detect non human face as face | 0.5 
+ faceswaplab_model | Insightface model to use| models[0] if len(models) &gt; 0 else "None"
+ faceswaplab_keep_original | keep original image before swapping. It true, will show original image | False
+ faceswaplab_units_count | How many faces units to use(requires restart) | 3
+ faceswaplab_detection_threshold | Detection threshold to use to detect face, if low will detect non human face as face | 0.5
 
 ### Default Settings :
 
 These parameters are used to configure the default settings displayed in post-processing.
 
- Name | Description | Default Value 
- faceswaplab_pp_default_face_restorer | UI Default post processing face restorer (requires restart) | None 
- faceswaplab_pp_default_face_restorer_visibility | UI Default post processing face restorer visibility (requires restart) | 1 
- faceswaplab_pp_default_face_restorer_weight | UI Default post processing face restorer weight (requires restart) | 1 
- faceswaplab_pp_default_upscaler | UI Default post processing upscaler (requires restart) | None 
- faceswaplab_pp_default_upscaler_visibility | UI Default post processing upscaler visibility(requires restart) | 1 
+ Name | Description | Default Value
+ faceswaplab_pp_default_face_restorer | UI Default post processing face restorer (requires restart) | None
+ faceswaplab_pp_default_face_restorer_visibility | UI Default post processing face restorer visibility (requires restart) | 1
+ faceswaplab_pp_default_face_restorer_weight | UI Default post processing face restorer weight (requires restart) | 1
+ faceswaplab_pp_default_upscaler | UI Default post processing upscaler (requires restart) | None
+ faceswaplab_pp_default_upscaler_visibility | UI Default post processing upscaler visibility(requires restart) | 1
 
 ### Upscaled inswapper Settings :
 
 These parameters are used to control the upscaled inswapper, see above.
 
- Name | Description | Default Value 
- faceswaplab_upscaled_swapper | Upscaled swapper. Applied only to the swapped faces. Apply transformations before merging with the original image | False 
- faceswaplab_upscaled_swapper_upscaler | Upscaled swapper upscaler (Recommended : LDSR but slow) | None 
- faceswaplab_upscaled_swapper_sharpen | Upscaled swapper sharpen | False 
- faceswaplab_upscaled_swapper_fixcolor | Upscaled swapper color correction | False 
- faceswaplab_upscaled_improved_mask | Use improved segmented mask (use pastenet to mask only the face) | True 
- faceswaplab_upscaled_swapper_face_restorer | Upscaled swapper face restorer | None 
- faceswaplab_upscaled_swapper_face_restorer_visibility | Upscaled swapper face restorer visibility | 1 
- faceswaplab_upscaled_swapper_face_restorer_weight | Upscaled swapper face restorer weight (codeformer) | 1 
- faceswaplab_upscaled_swapper_fthresh | Upscaled swapper fthresh (diff sensitivity) 10 = default behaviour. Low impact | 10 
- faceswaplab_upscaled_swapper_erosion | Upscaled swapper mask erosion factor, 1 = default behaviour. The larger it is, the more blur is applied around the face. Too large and the facial change is no longer visible | 1 
+ Name | Description | Default Value
+ faceswaplab_upscaled_swapper | Upscaled swapper. Applied only to the swapped faces. Apply transformations before merging with the original image | False
+ faceswaplab_upscaled_swapper_upscaler | Upscaled swapper upscaler (Recommended : LDSR but slow) | None
+ faceswaplab_upscaled_swapper_sharpen | Upscaled swapper sharpen | False
+ faceswaplab_upscaled_swapper_fixcolor | Upscaled swapper color correction | False
+ faceswaplab_upscaled_improved_mask | Use improved segmented mask (use pastenet to mask only the face) | True
+ faceswaplab_upscaled_swapper_face_restorer | Upscaled swapper face restorer | None
+ faceswaplab_upscaled_swapper_face_restorer_visibility | Upscaled swapper face restorer visibility | 1
+ faceswaplab_upscaled_swapper_face_restorer_weight | Upscaled swapper face restorer weight (codeformer) | 1
+ faceswaplab_upscaled_swapper_fthresh | Upscaled swapper fthresh (diff sensitivity) 10 = default behaviour. Low impact | 10
+ faceswaplab_upscaled_swapper_erosion | Upscaled swapper mask erosion factor, 1 = default behaviour. The larger it is, the more blur is applied around the face. Too large and the facial change is no longer visible | 1

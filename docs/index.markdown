@@ -5,7 +5,7 @@
 layout: home
 ---
 
-FaceSwapLab is an extension for Stable Diffusion that simplifies the use of [insighface models](https://insightface.ai/) for face-swapping. It has evolved from sd-webui-faceswap and some part of sd-webui-roop. However, a substantial amount of the code has been rewritten to improve performance and to better manage masks. 
+FaceSwapLab is an extension for Stable Diffusion that simplifies the use of [insighface models](https://insightface.ai/) for face-swapping. It has evolved from sd-webui-faceswap and some part of sd-webui-roop. However, a substantial amount of the code has been rewritten to improve performance and to better manage masks.
 
 Some key [features](features) include the ability to reuse faces via checkpoints, multiple face units, batch process images, sort faces based on size or gender, and support for vladmantic. It also provides a face inpainting feature.
 

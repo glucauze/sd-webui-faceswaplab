@@ -7,21 +7,27 @@ from functools import lru_cache
 from typing import Union, List
 from torch import device as torch_device
 
+
 @lru_cache
 def get_parsing_model(device: torch_device) -> torch.nn.Module:
     """
-    Returns an instance of the parsing model. 
+    Returns an instance of the parsing model.
     The returned model is cached for faster subsequent access.
-    
+
     Args:
         device: The torch device to use for computations.
-        
+
     Returns:
         The parsing model.
     """
     return init_parsing_model(device=device)
 
-def convert_image_to_tensor(images: Union[np.ndarray, List[np.ndarray]], convert_bgr_to_rgb: bool = True, use_float32: bool = True) -> Union[torch.Tensor, List[torch.Tensor]]:
+
+def convert_image_to_tensor(
+    images: Union[np.ndarray, List[np.ndarray]],
+    convert_bgr_to_rgb: bool = True,
+    use_float32: bool = True,
+) -> Union[torch.Tensor, List[torch.Tensor]]:
     """
     Converts an image or a list of images to PyTorch tensor.
 
@@ -33,10 +39,13 @@ def convert_image_to_tensor(images: Union[np.ndarray, List[np.ndarray]], convert
     Returns:
         PyTorch tensor or a list of PyTorch tensors.
     """
-    def _convert_single_image_to_tensor(image: np.ndarray, convert_bgr_to_rgb: bool, use_float32: bool) -> torch.Tensor:
+
+    def _convert_single_image_to_tensor(
+        image: np.ndarray, convert_bgr_to_rgb: bool, use_float32: bool
+    ) -> torch.Tensor:
         if image.shape[2] == 3 and convert_bgr_to_rgb:
-            if image.dtype == 'float64':
-                image = image.astype('float32')
+            if image.dtype == "float64":
+                image = image.astype("float32")
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image_tensor = torch.from_numpy(image.transpose(2, 0, 1))
         if use_float32:
@@ -44,9 +53,13 @@ def convert_image_to_tensor(images: Union[np.ndarray, List[np.ndarray]], convert
         return image_tensor
 
     if isinstance(images, list):
-        return [_convert_single_image_to_tensor(image, convert_bgr_to_rgb, use_float32) for image in images]
+        return [
+            _convert_single_image_to_tensor(image, convert_bgr_to_rgb, use_float32)
+            for image in images
+        ]
     else:
         return _convert_single_image_to_tensor(images, convert_bgr_to_rgb, use_float32)
+
 
 def generate_face_mask(face_image: np.ndarray, device: torch.device) -> np.ndarray:
     """
@@ -60,12 +73,18 @@ def generate_face_mask(face_image: np.ndarray, device: torch.device) -> np.ndarr
         The face mask as a numpy.ndarray.
     """
     # Resize the face image for the model
-    resized_face_image = cv2.resize(face_image, (512, 512), interpolation=cv2.INTER_LINEAR)
-    
+    resized_face_image = cv2.resize(
+        face_image, (512, 512), interpolation=cv2.INTER_LINEAR
+    )
+
     # Preprocess the image
-    face_input = convert_image_to_tensor((resized_face_image.astype('float32') / 255.0), convert_bgr_to_rgb=True, use_float32=True)
+    face_input = convert_image_to_tensor(
+        (resized_face_image.astype("float32") / 255.0),
+        convert_bgr_to_rgb=True,
+        use_float32=True,
+    )
     normalize(face_input, (0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True)
-    assert isinstance(face_input,torch.Tensor)
+    assert isinstance(face_input, torch.Tensor)
     face_input = torch.unsqueeze(face_input, 0).to(device)
 
     # Pass the image through the model
@@ -75,7 +94,27 @@ def generate_face_mask(face_image: np.ndarray, device: torch.device) -> np.ndarr
 
     # Generate the mask from the model output
     parse_mask = np.zeros(model_output.shape)
-    MASK_COLOR_MAP = [0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 255, 0, 0, 0]
+    MASK_COLOR_MAP = [
+        0,
+        255,
+        255,
+        255,
+        255,
+        255,
+        255,
+        255,
+        255,
+        255,
+        255,
+        255,
+        255,
+        255,
+        0,
+        255,
+        0,
+        0,
+        0,
+    ]
     for idx, color in enumerate(MASK_COLOR_MAP):
         parse_mask[model_output == idx] = color
 

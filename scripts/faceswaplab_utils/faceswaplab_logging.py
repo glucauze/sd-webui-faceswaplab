@@ -4,6 +4,7 @@ import sys
 from modules import shared
 from PIL import Image
 
+
 class ColoredFormatter(logging.Formatter):
     COLORS = {
         "DEBUG": "\033[0;36m",  # CYAN
@@ -40,12 +41,16 @@ loglevel = getattr(logging, loglevel_string.upper(), "INFO")
 logger.setLevel(loglevel)
 
 import tempfile
-if logger.getEffectiveLevel() <= logging.DEBUG :
+
+if logger.getEffectiveLevel() <= logging.DEBUG:
     DEBUG_DIR = tempfile.mkdtemp()
+
 
 def save_img_debug(img: Image.Image, message: str, *opts):
     if logger.getEffectiveLevel() <= logging.DEBUG:
-        with tempfile.NamedTemporaryFile(dir=DEBUG_DIR, delete=False, suffix=".png") as temp_file:
+        with tempfile.NamedTemporaryFile(
+            dir=DEBUG_DIR, delete=False, suffix=".png"
+        ) as temp_file:
             img_path = temp_file.name
             img.save(img_path)
 

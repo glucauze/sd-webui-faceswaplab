@@ -102,10 +102,10 @@ pp = PostProcessingOptions(
     codeformer_weight=0.5,
     restorer_visibility= 1)
 
-# Prepare the request 
+# Prepare the request
 request = FaceSwapRequest (
     image = pil_to_base64("test_image.png"),
-    units= [unit1, unit2], 
+    units= [unit1, unit2],
     postprocessing=pp
 )
 

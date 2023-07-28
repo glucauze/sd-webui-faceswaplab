@@ -1,0 +1,14 @@
+repos:
+    - repo: https://github.com/psf/black
+      rev: 23.7.0
+      hooks:
+        - id: black
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v4.4.0
+      hooks:
+        - id: check-added-large-files
+        - id: check-case-conflict
+        - id: check-docstring-first
+        - id: detect-private-key
+        - id: trailing-whitespace
+        - id: fix-byte-order-marker

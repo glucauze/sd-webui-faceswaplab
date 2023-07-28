@@ -31,7 +31,7 @@ To install the extension, follow the steps below:
 
 **You may need to restart sd once the installation process is complete.**
 
-On first launch, templates are downloaded, which may take some time. All models are located in the `models/faceswaplab` folder. 
+On first launch, templates are downloaded, which may take some time. All models are located in the `models/faceswaplab` folder.
 
 If you encounter the error `'NoneType' object has no attribute 'get'`, take the following steps:
 

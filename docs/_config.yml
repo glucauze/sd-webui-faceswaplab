@@ -20,12 +20,12 @@
 
 title: FaceSwap Lab
 description: >- # this means to ignore newlines until "baseurl:"
-  FaceSwapLab is an extension for Stable Diffusion that simplifies face-swapping. 
-  Some key functions of FaceSwapLab include the ability to reuse faces via checkpoints, 
+  FaceSwapLab is an extension for Stable Diffusion that simplifies face-swapping.
+  Some key functions of FaceSwapLab include the ability to reuse faces via checkpoints,
   batch process images, sort faces based on size or gender, and support for vladmantic.
-domain: glucauze.github.io       
-url: https://glucauze.github.io 
-baseurl: /sd-webui-faceswaplab/ 
+domain: glucauze.github.io
+url: https://glucauze.github.io
+baseurl: /sd-webui-faceswaplab/
 
 # Build settings
 theme: minima

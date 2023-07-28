@@ -1,4 +1,3 @@
-
 import glob
 import os
 import modules.scripts as scripts
@@ -6,6 +5,7 @@ from modules import scripts
 from scripts.faceswaplab_globals import EXTENSION_PATH
 from modules.shared import opts
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
+
 
 def get_models():
     """
@@ -29,16 +29,20 @@ def get_models():
 
     return models
 
-def get_current_model() -> str :
+
+def get_current_model() -> str:
     model = opts.data.get("faceswaplab_model", None)
-    if model is None :
+    if model is None:
         models = get_models()
         model = models[0] if len(models) else None
     logger.info("Try to use model : %s", model)
     if not os.path.isfile(model):
         logger.error("The model %s cannot be found or loaded", model)
-        raise FileNotFoundError("No faceswap model found. Please add it to the faceswaplab directory.")
+        raise FileNotFoundError(
+            "No faceswap model found. Please add it to the faceswaplab directory."
+        )
     return model
+
 
 def get_face_checkpoints():
     """
@@ -50,6 +54,8 @@ def get_face_checkpoints():
     Returns:
         list: A list of face paths, including the string "None" as the first element.
     """
-    faces_path = os.path.join(scripts.basedir(), "models", "faceswaplab", "faces", "*.pkl")
+    faces_path = os.path.join(
+        scripts.basedir(), "models", "faceswaplab", "faces", "*.pkl"
+    )
     faces = glob.glob(faces_path)
     return ["None"] + faces

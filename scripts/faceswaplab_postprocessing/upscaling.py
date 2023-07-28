@@ -1,11 +1,14 @@
-
-from scripts.faceswaplab_postprocessing.postprocessing_options import PostProcessingOptions, InpaintingWhen
+from scripts.faceswaplab_postprocessing.postprocessing_options import (
+    PostProcessingOptions,
+    InpaintingWhen,
+)
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
 from PIL import Image
 import numpy as np
 from modules import shared, processing, codeformer_model
 
-def upscale_img(image : Image.Image, pp_options :PostProcessingOptions) -> Image.Image :
+
+def upscale_img(image: Image.Image, pp_options: PostProcessingOptions) -> Image.Image:
     if pp_options.upscaler is not None and pp_options.upscaler.name != "None":
         original_image = image.copy()
         logger.info(
@@ -23,15 +26,17 @@ def upscale_img(image : Image.Image, pp_options :PostProcessingOptions) -> Image
         return result_image
     return image
 
-def restore_face(image : Image.Image, pp_options : PostProcessingOptions) -> Image.Image :
-    
+
+def restore_face(image: Image.Image, pp_options: PostProcessingOptions) -> Image.Image:
     if pp_options.face_restorer is not None:
         original_image = image.copy()
         logger.info("Restore face with %s", pp_options.face_restorer.name())
         numpy_image = np.array(image)
-        if pp_options.face_restorer_name == "CodeFormer" :
-            numpy_image = codeformer_model.codeformer.restore(numpy_image, w=pp_options.codeformer_weight)
-        else :
+        if pp_options.face_restorer_name == "CodeFormer":
+            numpy_image = codeformer_model.codeformer.restore(
+                numpy_image, w=pp_options.codeformer_weight
+            )
+        else:
             numpy_image = pp_options.face_restorer.restore(numpy_image)
 
         restored_image = Image.fromarray(numpy_image)
