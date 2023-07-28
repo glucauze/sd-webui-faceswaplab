@@ -5,6 +5,7 @@ from enum import Enum
 import base64, io
 from io import BytesIO
 from typing import List, Tuple, Optional
+import numpy as np
 
 
 class InpaintingWhen(Enum):
@@ -41,7 +42,10 @@ class FaceSwapUnit(BaseModel):
     blend_faces: bool = Field(description="Will blend faces if True", default=True)
 
     # Use same gender filtering
-    same_gender: bool = Field(description="Use same gender filtering", default=True)
+    same_gender: bool = Field(description="Use same gender filtering", default=False)
+
+    # Use same gender filtering
+    sort_by_size: bool = Field(description="Sort Faces by size", default=False)
 
     # If True, discard images with low similarity
     check_similarity: bool = Field(
@@ -70,6 +74,18 @@ class FaceSwapUnit(BaseModel):
         default=(0,),
     )
 
+    reference_face_index: int = Field(
+        description="The face index to use to extract face from reference",
+        default=0,
+    )
+
+    def get_batch_images(self) -> List[Image.Image]:
+        images = []
+        if self.batch_images:
+            for img in self.batch_images:
+                images.append(base64_to_pil(img))
+        return images
+
 
 class PostProcessingOptions(BaseModel):
     face_restorer_name: str = Field(description="face restorer name", default=None)
@@ -82,7 +98,7 @@ class PostProcessingOptions(BaseModel):
 
     upscaler_name: str = Field(description="upscaler name", default=None)
     scale: float = Field(description="upscaling scale", default=1, le=10, ge=0)
-    upscale_visibility: float = Field(
+    upscaler_visibility: float = Field(
         description="upscaler visibility", default=1, le=1, ge=0
     )
 
@@ -116,6 +132,9 @@ class PostProcessingOptions(BaseModel):
         examples=[e.value for e in InpaintingWhen.__members__.values()],
         default=InpaintingWhen.NEVER,
     )
+    inpainting_model: str = Field(
+        description="Inpainting model", examples=["Current"], default="Current"
+    )
 
 
 class FaceSwapRequest(BaseModel):
@@ -125,7 +144,7 @@ class FaceSwapRequest(BaseModel):
         default=None,
     )
     units: List[FaceSwapUnit]
-    postprocessing: PostProcessingOptions
+    postprocessing: Optional[PostProcessingOptions]
 
 
 class FaceSwapResponse(BaseModel):
@@ -133,11 +152,11 @@ class FaceSwapResponse(BaseModel):
     infos: List[str]
 
     @property
-    def pil_images(self):
+    def pil_images(self) -> Image.Image:
         return [base64_to_pil(img) for img in self.images]
 
 
-def pil_to_base64(img):
+def pil_to_base64(img: Image.Image) -> np.array:  # type:ignore
     if isinstance(img, str):
         img = Image.open(img)
 

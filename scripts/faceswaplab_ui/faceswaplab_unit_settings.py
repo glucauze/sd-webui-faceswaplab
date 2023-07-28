@@ -3,7 +3,7 @@ import numpy as np
 import base64
 import io
 from dataclasses import dataclass, fields
-from typing import List, Union
+from typing import Any, List, Optional, Set, Union
 import dill as pickle
 import gradio as gr
 from insightface.app.common import Face
@@ -50,14 +50,16 @@ class FaceSwapUnitSettings:
     swap_in_generated: bool
 
     @staticmethod
-    def get_unit_configuration(unit: int, components):
+    def get_unit_configuration(
+        unit: int, components: List[gr.components.Component]
+    ) -> Any:
         fields_count = len(fields(FaceSwapUnitSettings))
         return FaceSwapUnitSettings(
             *components[unit * fields_count : unit * fields_count + fields_count]
         )
 
     @property
-    def faces_index(self):
+    def faces_index(self) -> Set[int]:
         """
         Convert _faces_index from str to int
         """
@@ -72,18 +74,18 @@ class FaceSwapUnitSettings:
         return faces_index
 
     @property
-    def compute_similarity(self):
+    def compute_similarity(self) -> bool:
         return self._compute_similarity or self.check_similarity
 
     @property
-    def batch_files(self):
+    def batch_files(self) -> List[gr.File]:
         """
         Return empty array instead of None for batch files
         """
         return self._batch_files or []
 
     @property
-    def reference_face(self):
+    def reference_face(self) -> Optional[Face]:
         """
         Extract reference face (only once and store it for the rest of processing).
         Reference face is the checkpoint or the source image or the first image in the batch in that order.
@@ -97,6 +99,7 @@ class FaceSwapUnitSettings:
                         self._reference_face = face
                     except Exception as e:
                         logger.error("Failed to load checkpoint  : %s", e)
+                        raise e
             elif self.source_img is not None:
                 if isinstance(self.source_img, str):  # source_img is a base64 string
                     if (
@@ -119,11 +122,12 @@ class FaceSwapUnitSettings:
 
         if self._reference_face is None:
             logger.error("You need at least one reference face")
+            raise Exception("No reference face found")
 
         return self._reference_face
 
     @property
-    def faces(self):
+    def faces(self) -> List[Face]:
         """_summary_
         Extract all faces (including reference face) to provide an array of faces
         Only processed once.
@@ -146,7 +150,7 @@ class FaceSwapUnitSettings:
         return self._faces
 
     @property
-    def blended_faces(self):
+    def blended_faces(self) -> Face:
         """
         Blend the faces using the mean of all embeddings
         """

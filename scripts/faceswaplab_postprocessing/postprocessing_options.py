@@ -19,7 +19,7 @@ class PostProcessingOptions:
     codeformer_weight: float = 1
 
     upscaler_name: str = ""
-    scale: int = 1
+    scale: float = 1
     upscale_visibility: float = 0.5
 
     inpainting_denoising_strengh: float = 0

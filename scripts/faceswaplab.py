@@ -146,105 +146,111 @@ class FaceSwapScript(scripts.Script):
     def process(
         self, p: StableDiffusionProcessing, *components: List[gr.components.Component]
     ) -> None:
-        self.read_config(p, *components)
+        try:
+            self.read_config(p, *components)
 
-        # If is instance of img2img, we check if face swapping in source is required.
-        if isinstance(p, StableDiffusionProcessingImg2Img):
-            if self.enabled and len(self.swap_in_source_units) > 0:
-                init_images: List[Tuple[Optional[Image.Image], Optional[str]]] = [
-                    (img, None) for img in p.init_images
-                ]
-                new_inits = swapper.process_images_units(
-                    get_current_model(),
-                    self.swap_in_source_units,
-                    images=init_images,
-                    upscaled_swapper=self.upscaled_swapper_in_source,
-                    force_blend=True,
-                )
-                logger.info(f"processed init images: {len(init_images)}")
-                if new_inits is not None:
-                    p.init_images = [img[0] for img in new_inits]
+            # If is instance of img2img, we check if face swapping in source is required.
+            if isinstance(p, StableDiffusionProcessingImg2Img):
+                if self.enabled and len(self.swap_in_source_units) > 0:
+                    init_images: List[Tuple[Optional[Image.Image], Optional[str]]] = [
+                        (img, None) for img in p.init_images
+                    ]
+                    new_inits = swapper.process_images_units(
+                        get_current_model(),
+                        self.swap_in_source_units,
+                        images=init_images,
+                        upscaled_swapper=self.upscaled_swapper_in_source,
+                        force_blend=True,
+                    )
+                    logger.info(f"processed init images: {len(init_images)}")
+                    if new_inits is not None:
+                        p.init_images = [img[0] for img in new_inits]
+        except Exception as e:
+            logger.info("Failed to process : %s", e)
 
     def postprocess(
         self, p: StableDiffusionProcessing, processed: Processed, *args: List[Any]
     ) -> None:
-        if self.enabled:
-            # Get the original images without the grid
-            orig_images: List[Image.Image] = processed.images[
-                processed.index_of_first_image :
-            ]
-            orig_infotexts: List[str] = processed.infotexts[
-                processed.index_of_first_image :
-            ]
+        try:
+            if self.enabled:
+                # Get the original images without the grid
+                orig_images: List[Image.Image] = processed.images[
+                    processed.index_of_first_image :
+                ]
+                orig_infotexts: List[str] = processed.infotexts[
+                    processed.index_of_first_image :
+                ]
 
-            keep_original = self.keep_original_images
+                keep_original = self.keep_original_images
 
-            # These are were images and infos of swapped images will be stored
-            images = []
-            infotexts = []
-            if (len(self.swap_in_generated_units)) > 0:
-                for i, (img, info) in enumerate(zip(orig_images, orig_infotexts)):
-                    batch_index = i % p.batch_size
-                    swapped_images = swapper.process_images_units(
-                        get_current_model(),
-                        self.swap_in_generated_units,
-                        images=[(img, info)],
-                        upscaled_swapper=self.upscaled_swapper_in_generated,
-                    )
-                    if swapped_images is None:
-                        continue
+                # These are were images and infos of swapped images will be stored
+                images = []
+                infotexts = []
+                if (len(self.swap_in_generated_units)) > 0:
+                    for i, (img, info) in enumerate(zip(orig_images, orig_infotexts)):
+                        batch_index = i % p.batch_size
+                        swapped_images = swapper.process_images_units(
+                            get_current_model(),
+                            self.swap_in_generated_units,
+                            images=[(img, info)],
+                            upscaled_swapper=self.upscaled_swapper_in_generated,
+                        )
+                        if swapped_images is None:
+                            continue
 
-                    logger.info(f"{len(swapped_images)} images swapped")
-                    for swp_img, new_info in swapped_images:
-                        img = swp_img  # Will only swap the last image in the batch in next units (FIXME : hard to fix properly but not really critical)
+                        logger.info(f"{len(swapped_images)} images swapped")
+                        for swp_img, new_info in swapped_images:
+                            img = swp_img  # Will only swap the last image in the batch in next units (FIXME : hard to fix properly but not really critical)
 
-                        if swp_img is not None:
-                            save_img_debug(swp_img, "Before apply mask")
-                            swp_img = imgutils.apply_mask(swp_img, p, batch_index)
-                            save_img_debug(swp_img, "After apply mask")
+                            if swp_img is not None:
+                                save_img_debug(swp_img, "Before apply mask")
+                                swp_img = imgutils.apply_mask(swp_img, p, batch_index)
+                                save_img_debug(swp_img, "After apply mask")
 
-                            try:
-                                if self.postprocess_options is not None:
-                                    swp_img = enhance_image(
-                                        swp_img, self.postprocess_options
+                                try:
+                                    if self.postprocess_options is not None:
+                                        swp_img = enhance_image(
+                                            swp_img, self.postprocess_options
+                                        )
+                                except Exception as e:
+                                    logger.error("Failed to upscale : %s", e)
+
+                                logger.info("Add swp image to processed")
+                                images.append(swp_img)
+                                infotexts.append(new_info)
+                                if p.outpath_samples and opts.samples_save:
+                                    save_image(
+                                        swp_img,
+                                        p.outpath_samples,
+                                        "",
+                                        p.all_seeds[batch_index],
+                                        p.all_prompts[batch_index],
+                                        opts.samples_format,
+                                        info=new_info,
+                                        p=p,
+                                        suffix="-swapped",
                                     )
-                            except Exception as e:
-                                logger.error("Failed to upscale : %s", e)
+                            else:
+                                logger.error("swp image is None")
+                else:
+                    keep_original = True
 
-                            logger.info("Add swp image to processed")
-                            images.append(swp_img)
-                            infotexts.append(new_info)
-                            if p.outpath_samples and opts.samples_save:
-                                save_image(
-                                    swp_img,
-                                    p.outpath_samples,
-                                    "",
-                                    p.all_seeds[batch_index],
-                                    p.all_prompts[batch_index],
-                                    opts.samples_format,
-                                    info=new_info,
-                                    p=p,
-                                    suffix="-swapped",
-                                )
-                        else:
-                            logger.error("swp image is None")
-            else:
-                keep_original = True
+                # Generate grid :
+                if opts.return_grid and len(images) > 1:
+                    # FIXME :Use sd method, not that if blended is not active, the result will be a bit messy.
+                    grid = imgutils.create_square_image(images)
+                    text = processed.infotexts[0]
+                    infotexts.insert(0, text)
+                    if opts.enable_pnginfo:
+                        grid.info["parameters"] = text
+                    images.insert(0, grid)
 
-            # Generate grid :
-            if opts.return_grid and len(images) > 1:
-                # FIXME :Use sd method, not that if blended is not active, the result will be a bit messy.
-                grid = imgutils.create_square_image(images)
-                text = processed.infotexts[0]
-                infotexts.insert(0, text)
-                if opts.enable_pnginfo:
-                    grid.info["parameters"] = text
-                images.insert(0, grid)
+                if keep_original:
+                    # If we want to keep original images, we add all existing (including grid this time)
+                    images += processed.images
+                    infotexts += processed.infotexts
 
-            if keep_original:
-                # If we want to keep original images, we add all existing (including grid this time)
-                images += processed.images
-                infotexts += processed.infotexts
-
-            processed.images = images
-            processed.infotexts = infotexts
+                processed.images = images
+                processed.infotexts = infotexts
+        except Exception as e:
+            logger.error("Failed to swap face %s in postprocess method", e)

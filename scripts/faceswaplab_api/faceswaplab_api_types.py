@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 from PIL import Image
 from scripts.faceswaplab_utils.imgutils import (
     base64_to_pil,
@@ -34,7 +34,10 @@ class FaceSwapUnit(BaseModel):
     blend_faces: bool = Field(description="Will blend faces if True", default=True)
 
     # Use same gender filtering
-    same_gender: bool = Field(description="Use same gender filtering", default=True)
+    same_gender: bool = Field(description="Use same gender filtering", default=False)
+
+    # Use same gender filtering
+    sort_by_size: bool = Field(description="Sort Faces by size", default=False)
 
     # If True, discard images with low similarity
     check_similarity: bool = Field(
@@ -63,6 +66,11 @@ class FaceSwapUnit(BaseModel):
         default=(0,),
     )
 
+    reference_face_index: int = Field(
+        description="The face index to use to extract face from reference",
+        default=0,
+    )
+
     def get_batch_images(self) -> List[Image.Image]:
         images = []
         if self.batch_images:
@@ -82,7 +90,7 @@ class PostProcessingOptions(BaseModel):
 
     upscaler_name: str = Field(description="upscaler name", default=None)
     scale: float = Field(description="upscaling scale", default=1, le=10, ge=0)
-    upscale_visibility: float = Field(
+    upscaler_visibility: float = Field(
         description="upscaler visibility", default=1, le=1, ge=0
     )
 
@@ -116,6 +124,9 @@ class PostProcessingOptions(BaseModel):
         examples=[e.value for e in InpaintingWhen.__members__.values()],
         default=InpaintingWhen.NEVER,
     )
+    inpainting_model: str = Field(
+        description="Inpainting model", examples=["Current"], default="Current"
+    )
 
 
 class FaceSwapRequest(BaseModel):
@@ -125,7 +136,7 @@ class FaceSwapRequest(BaseModel):
         default=None,
     )
     units: List[FaceSwapUnit]
-    postprocessing: PostProcessingOptions
+    postprocessing: Optional[PostProcessingOptions]
 
 
 class FaceSwapResponse(BaseModel):

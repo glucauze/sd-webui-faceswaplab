@@ -5,6 +5,7 @@ from client_utils import (
     PostProcessingOptions,
     FaceSwapResponse,
     pil_to_base64,
+    InpaintingWhen,
 )
 
 address = "http://127.0.0.1:7860"
@@ -24,7 +25,14 @@ unit2 = FaceSwapUnit(
 
 # Post-processing config :
 pp = PostProcessingOptions(
-    face_restorer_name="CodeFormer", codeformer_weight=0.5, restorer_visibility=1
+    face_restorer_name="CodeFormer",
+    codeformer_weight=0.5,
+    restorer_visibility=1,
+    upscaler_name="Lanczos",
+    scale=4,
+    inpainting_steps=30,
+    inpainting_denoising_strengh=0.1,
+    inpainting_when=InpaintingWhen.BEFORE_RESTORE_FACE,
 )
 
 # Prepare the request

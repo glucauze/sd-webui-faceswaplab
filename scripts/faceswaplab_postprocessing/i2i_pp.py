@@ -14,6 +14,7 @@ from scripts.faceswaplab_swapping import swapper
 
 def img2img_diffusion(img: Image.Image, pp: PostProcessingOptions) -> Image.Image:
     if pp.inpainting_denoising_strengh == 0:
+        logger.info("Discard inpainting denoising strength is 0")
         return img
 
     try:
@@ -25,7 +26,7 @@ inpainting_steps : {pp.inpainting_steps}
 """
         )
         if not isinstance(pp.inpainting_sampler, str):
-            pass
+            pp.inpainting_sampler = "Euler"
 
         logger.info("send faces to image to image")
         img = img.copy()

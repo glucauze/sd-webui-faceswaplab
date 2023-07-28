@@ -3,7 +3,6 @@ import numpy as np
 from fastapi import FastAPI
 from modules.api import api
 from scripts.faceswaplab_api.faceswaplab_api_types import (
-    FaceSwapRequest,
     FaceSwapResponse,
 )
 from scripts.faceswaplab_globals import VERSION_FLAG
@@ -16,9 +15,15 @@ from scripts.faceswaplab_utils.imgutils import (
 )
 from scripts.faceswaplab_utils.models_utils import get_current_model
 from modules.shared import opts
+from scripts.faceswaplab_postprocessing.postprocessing import enhance_image
+from scripts.faceswaplab_postprocessing.postprocessing_options import (
+    PostProcessingOptions,
+)
+from scripts.faceswaplab_api import faceswaplab_api_types
+from scripts.faceswaplab_postprocessing.postprocessing_options import InpaintingWhen
 
 
-def encode_to_base64(image: Union[str, Image.Image, np.ndarray]) -> str:
+def encode_to_base64(image: Union[str, Image.Image, np.ndarray]) -> str:  # type: ignore
     """
     Encode an image to a base64 string.
 
@@ -40,7 +45,7 @@ def encode_to_base64(image: Union[str, Image.Image, np.ndarray]) -> str:
         return ""
 
 
-def encode_np_to_base64(image: np.ndarray) -> str:
+def encode_np_to_base64(image: np.ndarray) -> str:  # type: ignore
     """
     Encode a NumPy array to a base64 string.
 
@@ -54,6 +59,59 @@ def encode_np_to_base64(image: np.ndarray) -> str:
     """
     pil = Image.fromarray(image)
     return api.encode_pil_to_base64(pil)
+
+
+def get_postprocessing_options(
+    options: faceswaplab_api_types.PostProcessingOptions,
+) -> PostProcessingOptions:
+    pp_options = PostProcessingOptions(
+        face_restorer_name=options.face_restorer_name,
+        restorer_visibility=options.restorer_visibility,
+        codeformer_weight=options.codeformer_weight,
+        upscaler_name=options.upscaler_name,
+        scale=options.scale,
+        upscale_visibility=options.upscaler_visibility,
+        inpainting_denoising_strengh=options.inpainting_denoising_strengh,
+        inpainting_prompt=options.inpainting_prompt,
+        inpainting_negative_prompt=options.inpainting_negative_prompt,
+        inpainting_steps=options.inpainting_steps,
+        inpainting_sampler=options.inpainting_sampler,
+        inpainting_when=options.inpainting_when,
+        inpainting_model=options.inpainting_model,
+    )
+
+    assert isinstance(
+        pp_options.inpainting_when, InpaintingWhen
+    ), "Value is not a valid InpaintingWhen enum"
+
+    return pp_options
+
+
+def get_faceswap_units_settings(
+    api_units: List[faceswaplab_api_types.FaceSwapUnit],
+) -> List[FaceSwapUnitSettings]:
+    units = []
+    for u in api_units:
+        units.append(
+            FaceSwapUnitSettings(
+                source_img=base64_to_pil(u.source_img),
+                source_face=u.source_face,
+                _batch_files=u.get_batch_images(),
+                blend_faces=u.blend_faces,
+                enable=True,
+                same_gender=u.same_gender,
+                sort_by_size=u.sort_by_size,
+                check_similarity=u.check_similarity,
+                _compute_similarity=u.compute_similarity,
+                min_ref_sim=u.min_ref_sim,
+                min_sim=u.min_sim,
+                _faces_index=",".join([str(i) for i in (u.faces_index)]),
+                reference_face_index=u.reference_face_index,
+                swap_in_generated=True,
+                swap_in_source=False,
+            )
+        )
+    return units
 
 
 def faceswaplab_api(_: gr.Blocks, app: FastAPI) -> None:
@@ -71,29 +129,17 @@ def faceswaplab_api(_: gr.Blocks, app: FastAPI) -> None:
         tags=["faceswaplab"],
         description="Swap a face in an image using units",
     )
-    async def swap_face(request: FaceSwapRequest) -> FaceSwapResponse:
+    async def swap_face(
+        request: faceswaplab_api_types.FaceSwapRequest,
+    ) -> faceswaplab_api_types.FaceSwapResponse:
         units: List[FaceSwapUnitSettings] = []
         src_image: Optional[Image.Image] = base64_to_pil(request.image)
         response = FaceSwapResponse(images=[], infos=[])
+        if request.postprocessing:
+            pp_options = get_postprocessing_options(request.postprocessing)
+
         if src_image is not None:
-            for u in request.units:
-                units.append(
-                    FaceSwapUnitSettings(
-                        source_img=base64_to_pil(u.source_img),
-                        source_face=u.source_face,
-                        _batch_files=u.get_batch_images(),
-                        blend_faces=u.blend_faces,
-                        enable=True,
-                        same_gender=u.same_gender,
-                        check_similarity=u.check_similarity,
-                        _compute_similarity=u.compute_similarity,
-                        min_ref_sim=u.min_ref_sim,
-                        min_sim=u.min_sim,
-                        _faces_index=",".join([str(i) for i in (u.faces_index)]),
-                        swap_in_generated=True,
-                        swap_in_source=False,
-                    )
-                )
+            units = get_faceswap_units_settings(request.units)
 
             swapped_images = swapper.process_images_units(
                 get_current_model(),
@@ -102,6 +148,8 @@ def faceswaplab_api(_: gr.Blocks, app: FastAPI) -> None:
                 upscaled_swapper=opts.data.get("faceswaplab_upscaled_swapper", False),
             )
             for img, info in swapped_images:
+                if pp_options:
+                    img = enhance_image(img, pp_options)
                 response.images.append(encode_to_base64(img))
                 response.infos.append(info)
 
