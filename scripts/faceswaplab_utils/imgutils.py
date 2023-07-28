@@ -1,35 +1,76 @@
 import io
-from typing import Optional
-from PIL import Image, ImageChops, ImageOps, ImageFilter
+from typing import List, Optional, Tuple, Union, Dict
+from PIL import Image
 import cv2
 import numpy as np
 from math import isqrt, ceil
 import torch
 from ifnude import detect
-from scripts.faceswaplab_globals import NSFW_SCORE
+from scripts.faceswaplab_globals import NSFW_SCORE_THRESHOLD
 from modules import processing
 import base64
+from collections import Counter
 
 
-def check_against_nsfw(img):
-    shapes = []
-    chunks = detect(img)
+def check_against_nsfw(img: Image.Image) -> bool:
+    """
+    Check if an image exceeds the Not Safe for Work (NSFW) score.
+
+    Parameters:
+    img (PIL.Image.Image): The image to be checked.
+
+    Returns:
+    bool: True if any part of the image is considered NSFW, False otherwise.
+    """
+
+    shapes: List[bool] = []
+    chunks: List[Dict[str, Union[int, float]]] = detect(img)
+
     for chunk in chunks:
-        shapes.append(chunk["score"] > NSFW_SCORE)
+        shapes.append(chunk["score"] > NSFW_SCORE_THRESHOLD)
+
     return any(shapes)
 
 
-def pil_to_cv2(pil_img):
+def pil_to_cv2(pil_img: Image.Image) -> np.ndarray:  # type: ignore
+    """
+    Convert a PIL Image into an OpenCV image (cv2).
+
+    Args:
+        pil_img (PIL.Image.Image): An image in PIL format.
+
+    Returns:
+        np.ndarray: The input image converted to OpenCV format (BGR).
+    """
     return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
 
 
-def cv2_to_pil(cv2_img):
+def cv2_to_pil(cv2_img: np.ndarray) -> Image.Image:  # type: ignore
+    """
+    Convert an OpenCV image (cv2) into a PIL Image.
+
+    Args:
+        cv2_img (np.ndarray): An image in OpenCV format (BGR).
+
+    Returns:
+        PIL.Image.Image: The input image converted to PIL format (RGB).
+    """
     return Image.fromarray(cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB))
 
 
-def torch_to_pil(images):
+def torch_to_pil(images: torch.Tensor) -> List[Image.Image]:
     """
-    Convert a numpy image or a batch of images to a PIL image.
+    Converts a tensor image or a batch of tensor images to a PIL image or a list of PIL images.
+
+    Parameters
+    ----------
+    images : torch.Tensor
+        A tensor representing an image or a batch of images.
+
+    Returns
+    -------
+    list
+        A list of PIL images.
     """
     images = images.cpu().permute(0, 2, 3, 1).numpy()
     if images.ndim == 3:
@@ -39,9 +80,19 @@ def torch_to_pil(images):
     return pil_images
 
 
-def pil_to_torch(pil_images):
+def pil_to_torch(pil_images: Union[Image.Image, List[Image.Image]]) -> torch.Tensor:
     """
-    Convert a PIL image or a list of PIL images to a torch tensor or a batch of torch tensors.
+    Converts a PIL image or a list of PIL images to a torch tensor or a batch of torch tensors.
+
+    Parameters
+    ----------
+    pil_images : Union[Image.Image, List[Image.Image]]
+        A PIL image or a list of PIL images.
+
+    Returns
+    -------
+    torch.Tensor
+        A tensor representing an image or a batch of images.
     """
     if isinstance(pil_images, list):
         numpy_images = [np.array(image) for image in pil_images]
@@ -53,10 +104,7 @@ def pil_to_torch(pil_images):
     return torch_image
 
 
-from collections import Counter
-
-
-def create_square_image(image_list):
+def create_square_image(image_list: List[Image.Image]) -> Optional[Image.Image]:
     """
     Creates a square image by combining multiple images in a grid pattern.
 
@@ -108,16 +156,41 @@ def create_square_image(image_list):
     return None
 
 
-def create_mask(image, box_coords):
+# def create_mask(image : Image.Image, box_coords : Tuple[int, int, int, int]) -> Image.Image:
+#     width, height = image.size
+#     mask = Image.new("L", (width, height), 255)
+#     x1, y1, x2, y2 = box_coords
+#     for x in range(width):
+#         for y in range(height):
+#             if x1 <= x <= x2 and y1 <= y <= y2:
+#                 mask.putpixel((x, y), 255)
+#             else:
+#                 mask.putpixel((x, y), 0)
+#     return mask
+
+
+def create_mask(
+    image: Image.Image, box_coords: Tuple[int, int, int, int]
+) -> Image.Image:
+    """
+    Create a binary mask for a given image and bounding box coordinates.
+
+    Args:
+        image (PIL.Image.Image): The input image.
+        box_coords (Tuple[int, int, int, int]): A tuple of 4 integers defining the bounding box.
+        It follows the pattern (x1, y1, x2, y2), where (x1, y1) is the top-left coordinate of the
+        box and (x2, y2) is the bottom-right coordinate of the box.
+
+    Returns:
+        PIL.Image.Image: A binary mask of the same size as the input image, where pixels within
+        the bounding box are white (255) and pixels outside the bounding box are black (0).
+    """
     width, height = image.size
-    mask = Image.new("L", (width, height), 255)
+    mask = Image.new("L", (width, height), 0)
     x1, y1, x2, y2 = box_coords
-    for x in range(width):
-        for y in range(height):
-            if x1 <= x <= x2 and y1 <= y <= y2:
-                mask.putpixel((x, y), 255)
-            else:
-                mask.putpixel((x, y), 0)
+    for x in range(x1, x2 + 1):
+        for y in range(y1, y2 + 1):
+            mask.putpixel((x, y), 255)
     return mask
 
 
@@ -185,12 +258,32 @@ def prepare_mask(
 
 
 def base64_to_pil(base64str: Optional[str]) -> Optional[Image.Image]:
+    """
+    Converts a base64 string to a PIL Image object.
+
+    Parameters:
+    base64str (Optional[str]): The base64 string to convert. This string may contain a data URL scheme
+    (i.e., 'data:image/jpeg;base64,') or just be the raw base64 encoded data. If None, the function
+    will return None.
+
+    Returns:
+    Optional[Image.Image]: A PIL Image object created from the base64 string. If the input is None,
+    the function returns None.
+
+    Raises:
+    binascii.Error: If the base64 string is not properly formatted or encoded.
+    PIL.UnidentifiedImageError: If the image format cannot be identified.
+    """
+
     if base64str is None:
         return None
-    if "base64," in base64str:  # check if the base64 string has a data URL scheme
+
+    # Check if the base64 string has a data URL scheme
+    if "base64," in base64str:
         base64_data = base64str.split("base64,")[-1]
         img_bytes = base64.b64decode(base64_data)
     else:
-        # if no data URL scheme, just decode
+        # If no data URL scheme, just decode
         img_bytes = base64.b64decode(base64str)
+
     return Image.open(io.BytesIO(img_bytes))

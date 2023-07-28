@@ -1,5 +1,6 @@
 import glob
 import os
+from typing import List
 import modules.scripts as scripts
 from modules import scripts
 from scripts.faceswaplab_globals import EXTENSION_PATH
@@ -7,7 +8,7 @@ from modules.shared import opts
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
 
 
-def get_models():
+def get_models() -> List[str]:
     """
     Retrieve a list of swap model files.
 
@@ -44,7 +45,7 @@ def get_current_model() -> str:
     return model
 
 
-def get_face_checkpoints():
+def get_face_checkpoints() -> List[str]:
     """
     Retrieve a list of face checkpoint paths.
 

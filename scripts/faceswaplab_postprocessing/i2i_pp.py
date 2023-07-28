@@ -1,15 +1,11 @@
-from modules.face_restoration import FaceRestoration
-from modules.upscaler import UpscalerData
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
 from PIL import Image
-import numpy as np
 from modules import shared
 from scripts.faceswaplab_utils import imgutils
-from modules import shared, processing, codeformer_model
+from modules import shared, processing
 from modules.processing import StableDiffusionProcessingImg2Img
 from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,
-    InpaintingWhen,
 )
 from modules import sd_models
 

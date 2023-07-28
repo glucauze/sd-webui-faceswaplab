@@ -1,4 +1,3 @@
-from modules.face_restoration import FaceRestoration
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
 from PIL import Image
 from scripts.faceswaplab_postprocessing.postprocessing_options import (

@@ -40,7 +40,6 @@ please contact the contributor(s) of the work.
 
 
 import torch
-import cv2
 import os
 import torch
 from torch.hub import download_url_to_file, get_dir

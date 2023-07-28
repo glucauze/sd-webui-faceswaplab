@@ -1,17 +1,11 @@
 import cv2
 import numpy as np
-import onnx
-import onnxruntime
 from insightface.model_zoo.inswapper import INSwapper
 from insightface.utils import face_align
-from modules import codeformer_model, processing, scripts, shared
-from modules.face_restoration import FaceRestoration
-from modules.shared import cmd_opts, opts, state
+from modules import processing, shared
+from modules.shared import opts
 from modules.upscaler import UpscalerData
-from onnx import numpy_helper
-from PIL import Image
 
-from scripts.faceswaplab_utils.faceswaplab_logging import logger
 from scripts.faceswaplab_postprocessing import upscaling
 from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,

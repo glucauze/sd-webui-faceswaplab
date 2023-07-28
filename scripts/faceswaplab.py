@@ -4,7 +4,6 @@ from scripts.faceswaplab_settings import faceswaplab_settings
 from scripts.faceswaplab_ui import faceswaplab_tab, faceswaplab_unit_ui
 from scripts.faceswaplab_utils.models_utils import (
     get_current_model,
-    get_face_checkpoints,
 )
 
 from scripts import faceswaplab_globals
@@ -12,7 +11,6 @@ from scripts.faceswaplab_swapping import swapper
 from scripts.faceswaplab_utils import faceswaplab_logging, imgutils
 from scripts.faceswaplab_utils import models_utils
 from scripts.faceswaplab_postprocessing import upscaling
-import numpy as np
 
 # Reload all the modules when using "apply and restart"
 # This is mainly done for development purposes
@@ -29,15 +27,13 @@ importlib.reload(faceswaplab_api)
 import os
 from dataclasses import fields
 from pprint import pformat
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
-import dill as pickle
 import gradio as gr
 import modules.scripts as scripts
 from modules import script_callbacks, scripts
-from insightface.app.common import Face
 from modules import scripts, shared
-from modules.images import save_image, image_grid
+from modules.images import save_image
 from modules.processing import (
     Processed,
     StableDiffusionProcessing,
@@ -46,7 +42,6 @@ from modules.processing import (
 from modules.shared import opts
 from PIL import Image
 
-from scripts.faceswaplab_utils.imgutils import pil_to_cv2, check_against_nsfw
 from scripts.faceswaplab_utils.faceswaplab_logging import logger, save_img_debug
 from scripts.faceswaplab_globals import VERSION_FLAG
 from scripts.faceswaplab_postprocessing.postprocessing_options import (
@@ -76,15 +71,15 @@ class FaceSwapScript(scripts.Script):
         super().__init__()
 
     @property
-    def units_count(self):
+    def units_count(self) -> int:
         return opts.data.get("faceswaplab_units_count", 3)
 
     @property
-    def upscaled_swapper_in_generated(self):
+    def upscaled_swapper_in_generated(self) -> bool:
         return opts.data.get("faceswaplab_upscaled_swapper", False)
 
     @property
-    def upscaled_swapper_in_source(self):
+    def upscaled_swapper_in_source(self) -> bool:
         return opts.data.get("faceswaplab_upscaled_swapper_in_source", False)
 
     @property
@@ -93,24 +88,24 @@ class FaceSwapScript(scripts.Script):
         return any([u.enable for u in self.units]) and not shared.state.interrupted
 
     @property
-    def keep_original_images(self):
+    def keep_original_images(self) -> bool:
         return opts.data.get("faceswaplab_keep_original", False)
 
     @property
-    def swap_in_generated_units(self):
+    def swap_in_generated_units(self) -> List[FaceSwapUnitSettings]:
         return [u for u in self.units if u.swap_in_generated and u.enable]
 
     @property
-    def swap_in_source_units(self):
+    def swap_in_source_units(self) -> List[FaceSwapUnitSettings]:
         return [u for u in self.units if u.swap_in_source and u.enable]
 
-    def title(self):
+    def title(self) -> str:
         return f"faceswaplab"
 
-    def show(self, is_img2img):
+    def show(self, is_img2img: bool) -> bool:
         return scripts.AlwaysVisible
 
-    def ui(self, is_img2img):
+    def ui(self, is_img2img: bool) -> List[gr.components.Component]:
         with gr.Accordion(f"FaceSwapLab {VERSION_FLAG}", open=False):
             components = []
             for i in range(1, self.units_count + 1):
@@ -119,16 +114,9 @@ class FaceSwapScript(scripts.Script):
         # If the order is modified, the before_process should be changed accordingly.
         return components + upscaler
 
-    # def make_script_first(self,p: StableDiffusionProcessing) :
-    # FIXME : not really useful, will only impact postprocessing (kept for further testing)
-    #     runner : scripts.ScriptRunner = p.scripts
-    #     alwayson = runner.alwayson_scripts
-    #     alwayson.pop(alwayson.index(self))
-    #     alwayson.insert(0, self)
-    #     print("Running in ", alwayson.index(self), "position")
-    #     logger.info("Running scripts : %s", pformat(runner.alwayson_scripts))
-
-    def read_config(self, p: StableDiffusionProcessing, *components):
+    def read_config(
+        self, p: StableDiffusionProcessing, *components: List[gr.components.Component]
+    ) -> None:
         # The order of processing for the components is important
         # The method first process faceswap units then postprocessing units
 
@@ -148,14 +136,16 @@ class FaceSwapScript(scripts.Script):
         len_conf: int = len(fields(FaceSwapUnitSettings))
         shift: int = self.units_count * len_conf
         self.postprocess_options = PostProcessingOptions(
-            *components[shift : shift + len(fields(PostProcessingOptions))]
+            *components[shift : shift + len(fields(PostProcessingOptions))]  # type: ignore
         )
         logger.debug("%s", pformat(self.postprocess_options))
 
         if self.enabled:
             p.do_not_save_samples = not self.keep_original_images
 
-    def process(self, p: StableDiffusionProcessing, *components):
+    def process(
+        self, p: StableDiffusionProcessing, *components: List[gr.components.Component]
+    ) -> None:
         self.read_config(p, *components)
 
         # If is instance of img2img, we check if face swapping in source is required.
@@ -175,7 +165,9 @@ class FaceSwapScript(scripts.Script):
                 if new_inits is not None:
                     p.init_images = [img[0] for img in new_inits]
 
-    def postprocess(self, p: StableDiffusionProcessing, processed: Processed, *args):
+    def postprocess(
+        self, p: StableDiffusionProcessing, processed: Processed, *args: List[Any]
+    ) -> None:
         if self.enabled:
             # Get the original images without the grid
             orig_images: List[Image.Image] = processed.images[

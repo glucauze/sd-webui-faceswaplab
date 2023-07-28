@@ -5,13 +5,12 @@ from pprint import pformat, pprint
 import dill as pickle
 import gradio as gr
 import modules.scripts as scripts
-import numpy as np
 import onnx
 import pandas as pd
 from scripts.faceswaplab_ui.faceswaplab_unit_ui import faceswap_unit_ui
 from scripts.faceswaplab_ui.faceswaplab_upscaler_ui import upscaler_ui
 from insightface.app.common import Face
-from modules import script_callbacks, scripts
+from modules import scripts
 from PIL import Image
 from modules.shared import opts
 
@@ -25,12 +24,13 @@ from scripts.faceswaplab_postprocessing.postprocessing_options import (
 )
 from scripts.faceswaplab_postprocessing.postprocessing import enhance_image
 from dataclasses import fields
-from typing import List
+from typing import Any, List, Optional, Union
 from scripts.faceswaplab_ui.faceswaplab_unit_settings import FaceSwapUnitSettings
 from scripts.faceswaplab_utils.models_utils import get_current_model
+import re
 
 
-def compare(img1, img2):
+def compare(img1: Image.Image, img2: Image.Image) -> Union[float, str]:
     if img1 is not None and img2 is not None:
         return swapper.compare_faces(img1, img2)
 
@@ -40,19 +40,10 @@ def compare(img1, img2):
 def extract_faces(
     files,
     extract_path,
-    face_restorer_name,
-    face_restorer_visibility,
-    codeformer_weight,
-    upscaler_name,
-    upscaler_scale,
-    upscaler_visibility,
-    inpainting_denoising_strengh,
-    inpainting_prompt,
-    inpainting_negative_prompt,
-    inpainting_steps,
-    inpainting_sampler,
-    inpainting_when,
+    *components: List[gr.components.Component],
 ):
+    postprocess_options = PostProcessingOptions(*components)  # type: ignore
+
     if not extract_path:
         tempfile.mkdtemp()
     if files is not None:
@@ -66,24 +57,16 @@ def extract_faces(
                     bbox = face.bbox.astype(int)
                     x_min, y_min, x_max, y_max = bbox
                     face_image = img.crop((x_min, y_min, x_max, y_max))
-                    if face_restorer_name or face_restorer_visibility:
-                        scale = 1 if face_image.width > 512 else 512 // face_image.width
+                    if (
+                        postprocess_options.face_restorer_name
+                        or postprocess_options.restorer_visibility
+                    ):
+                        postprocess_options.scale = (
+                            1 if face_image.width > 512 else 512 // face_image.width
+                        )
                         face_image = enhance_image(
                             face_image,
-                            PostProcessingOptions(
-                                face_restorer_name=face_restorer_name,
-                                restorer_visibility=face_restorer_visibility,
-                                codeformer_weight=codeformer_weight,
-                                upscaler_name=upscaler_name,
-                                upscale_visibility=upscaler_visibility,
-                                scale=scale,
-                                inpainting_denoising_strengh=inpainting_denoising_strengh,
-                                inpainting_prompt=inpainting_prompt,
-                                inpainting_steps=inpainting_steps,
-                                inpainting_negative_prompt=inpainting_negative_prompt,
-                                inpainting_when=inpainting_when,
-                                inpainting_sampler=inpainting_sampler,
-                            ),
+                            postprocess_options,
                         )
                     path = tempfile.NamedTemporaryFile(
                         delete=False, suffix=".png", dir=extract_path
@@ -95,7 +78,7 @@ def extract_faces(
     return None
 
 
-def analyse_faces(image, det_threshold=0.5):
+def analyse_faces(image: Image.Image, det_threshold: float = 0.5) -> str:
     try:
         faces = swapper.get_faces(imgutils.pil_to_cv2(image), det_thresh=det_threshold)
         result = ""
@@ -110,27 +93,40 @@ def analyse_faces(image, det_threshold=0.5):
         return "Analysis Failed"
 
 
-def build_face_checkpoint_and_save(batch_files, name):
+def sanitize_name(name: str) -> str:
+    logger.debug(f"Sanitize name {name}")
+    name = re.sub("[^A-Za-z0-9_. ]+", "", name)
+    name = name.replace(" ", "_")
+    logger.debug(f"Sanitized name {name[:255]}")
+    return name[:255]
+
+
+def build_face_checkpoint_and_save(
+    batch_files: gr.File, name: str
+) -> Optional[Image.Image]:
     """
-    Builds a face checkpoint, swaps faces, and saves the result to a file.
+    Builds a face checkpoint using the provided image files, performs face swapping,
+    and saves the result to a file. If a blended face is successfully obtained and the face swapping
+    process succeeds, the resulting image is returned. Otherwise, None is returned.
 
     Args:
-        batch_files (list): List of image file paths.
-        name (str): Name of the face checkpoint
+        batch_files (list): List of image file paths used to create the face checkpoint.
+        name (str): The name assigned to the face checkpoint.
 
     Returns:
-        PIL.Image.Image or None: Resulting swapped face image if successful, otherwise None.
+        PIL.Image.Image or None: The resulting swapped face image if the process is successful; None otherwise.
     """
+    name = sanitize_name(name)
     batch_files = batch_files or []
-    print("Build", name, [x.name for x in batch_files])
+    logger.info("Build %s %s", name, [x.name for x in batch_files])
     faces = swapper.get_faces_from_img_files(batch_files)
     blended_face = swapper.blend_faces(faces)
     preview_path = os.path.join(
         scripts.basedir(), "extensions", "sd-webui-faceswaplab", "references"
     )
     faces_path = os.path.join(scripts.basedir(), "models", "faceswaplab", "faces")
-    if not os.path.exists(faces_path):
-        os.makedirs(faces_path)
+
+    os.makedirs(faces_path, exist_ok=True)
 
     target_img = None
     if blended_face:
@@ -208,7 +204,9 @@ def explore_onnx_faceswap_model(model_path):
     return df
 
 
-def batch_process(files, save_path, *components):
+def batch_process(
+    files, save_path, *components: List[gr.components.Component]
+) -> Optional[List[Image.Image]]:
     try:
         if save_path is not None:
             os.makedirs(save_path, exist_ok=True)
@@ -228,7 +226,7 @@ def batch_process(files, save_path, *components):
         len_conf: int = len(fields(FaceSwapUnitSettings))
         shift: int = units_count * len_conf
         postprocess_options = PostProcessingOptions(
-            *components[shift : shift + len(fields(PostProcessingOptions))]
+            *components[shift : shift + len(fields(PostProcessingOptions))]  # type: ignore
         )
         logger.debug("%s", pformat(postprocess_options))
 
@@ -247,7 +245,7 @@ def batch_process(files, save_path, *components):
                     ),
                 )
                 if len(swapped_images) > 0:
-                    current_images += [img for img, info in swapped_images]
+                    current_images += [img for img, _ in swapped_images]
 
                 logger.info("%s images generated", len(current_images))
                 for i, img in enumerate(current_images):
@@ -269,7 +267,7 @@ def batch_process(files, save_path, *components):
     return None
 
 
-def tools_ui():
+def tools_ui() -> None:
     models = get_models()
     with gr.Tab("Tools"):
         with gr.Tab("Build"):
@@ -431,7 +429,7 @@ def tools_ui():
     )
 
 
-def on_ui_tabs():
+def on_ui_tabs() -> List[Any]:
     with gr.Blocks(analytics_enabled=False) as ui_faceswap:
         tools_ui()
     return [(ui_faceswap, "FaceSwapLab", "faceswaplab_tab")]

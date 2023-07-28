@@ -1,4 +1,7 @@
-def preload(parser):
+from argparse import ArgumentParser
+
+
+def preload(parser: ArgumentParser) -> None:
     parser.add_argument(
         "--faceswaplab_loglevel",
         default="INFO",

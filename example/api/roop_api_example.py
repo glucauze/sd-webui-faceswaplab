@@ -1,5 +1,4 @@
 import requests
-from PIL import Image
 from client_utils import (
     FaceSwapRequest,
     FaceSwapUnit,

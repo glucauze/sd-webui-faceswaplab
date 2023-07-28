@@ -3,7 +3,7 @@ from modules import script_callbacks, shared
 import gradio as gr
 
 
-def on_ui_settings():
+def on_ui_settings() -> None:
     section = ("faceswaplab", "FaceSwapLab")
     models = get_models()
     shared.opts.add_option(

@@ -14,7 +14,7 @@ model_name = os.path.basename(model_url)
 model_path = os.path.join(models_dir, model_name)
 
 
-def download(url, path):
+def download(url: str, path: str) -> None:
     request = urllib.request.urlopen(url)
     total = int(request.headers.get("Content-Length", 0))
     with tqdm(

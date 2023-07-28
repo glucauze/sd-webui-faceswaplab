@@ -1,52 +1,68 @@
 from PIL import Image
 import numpy as np
-from fastapi import FastAPI, Body
-from fastapi.exceptions import HTTPException
-from modules.api.models import *
+from fastapi import FastAPI
 from modules.api import api
 from scripts.faceswaplab_api.faceswaplab_api_types import (
-    FaceSwapUnit,
     FaceSwapRequest,
     FaceSwapResponse,
 )
 from scripts.faceswaplab_globals import VERSION_FLAG
 import gradio as gr
-from typing import List, Optional
+from typing import Dict, List, Optional, Union
 from scripts.faceswaplab_swapping import swapper
-from scripts.faceswaplab_utils.faceswaplab_logging import save_img_debug
 from scripts.faceswaplab_ui.faceswaplab_unit_settings import FaceSwapUnitSettings
 from scripts.faceswaplab_utils.imgutils import (
-    pil_to_cv2,
-    check_against_nsfw,
     base64_to_pil,
 )
 from scripts.faceswaplab_utils.models_utils import get_current_model
 from modules.shared import opts
 
 
-def encode_to_base64(image):
-    if type(image) is str:
+def encode_to_base64(image: Union[str, Image.Image, np.ndarray]) -> str:
+    """
+    Encode an image to a base64 string.
+
+    The image can be a file path (str), a PIL Image, or a NumPy array.
+
+    Args:
+        image (Union[str, Image.Image, np.ndarray]): The image to encode.
+
+    Returns:
+        str: The base64-encoded image if successful, otherwise an empty string.
+    """
+    if isinstance(image, str):
         return image
-    elif type(image) is Image.Image:
+    elif isinstance(image, Image.Image):
         return api.encode_pil_to_base64(image)
-    elif type(image) is np.ndarray:
+    elif isinstance(image, np.ndarray):
         return encode_np_to_base64(image)
     else:
         return ""
 
 
-def encode_np_to_base64(image):
+def encode_np_to_base64(image: np.ndarray) -> str:
+    """
+    Encode a NumPy array to a base64 string.
+
+    The array is first converted to a PIL Image, then encoded.
+
+    Args:
+        image (np.ndarray): The NumPy array to encode.
+
+    Returns:
+        str: The base64-encoded image.
+    """
     pil = Image.fromarray(image)
     return api.encode_pil_to_base64(pil)
 
 
-def faceswaplab_api(_: gr.Blocks, app: FastAPI):
+def faceswaplab_api(_: gr.Blocks, app: FastAPI) -> None:
     @app.get(
         "/faceswaplab/version",
         tags=["faceswaplab"],
         description="Get faceswaplab version",
     )
-    async def version():
+    async def version() -> Dict[str, str]:
         return {"version": VERSION_FLAG}
 
     # use post as we consider the method non idempotent (which is debatable)

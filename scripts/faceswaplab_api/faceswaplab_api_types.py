@@ -1,16 +1,8 @@
-from scripts.faceswaplab_swapping import swapper
-import numpy as np
 from typing import List, Tuple
-import dill as pickle
-import gradio as gr
-from insightface.app.common import Face
 from PIL import Image
 from scripts.faceswaplab_utils.imgutils import (
-    pil_to_cv2,
-    check_against_nsfw,
     base64_to_pil,
 )
-from scripts.faceswaplab_utils.faceswaplab_logging import logger
 from pydantic import BaseModel, Field
 from scripts.faceswaplab_postprocessing.postprocessing_options import InpaintingWhen
 

@@ -8,7 +8,7 @@ import dill as pickle
 import gradio as gr
 from insightface.app.common import Face
 from PIL import Image
-from scripts.faceswaplab_utils.imgutils import pil_to_cv2, check_against_nsfw
+from scripts.faceswaplab_utils.imgutils import pil_to_cv2
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
 
 

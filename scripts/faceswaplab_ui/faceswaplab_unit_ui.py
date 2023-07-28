@@ -1,8 +1,11 @@
+from typing import List
 from scripts.faceswaplab_utils.models_utils import get_face_checkpoints
 import gradio as gr
 
 
-def faceswap_unit_ui(is_img2img, unit_num=1, id_prefix="faceswaplab"):
+def faceswap_unit_ui(
+    is_img2img: bool, unit_num: int = 1, id_prefix: str = "faceswaplab"
+) -> List[gr.components.Component]:
     with gr.Tab(f"Face {unit_num}"):
         with gr.Column():
             gr.Markdown(
@@ -37,7 +40,7 @@ def faceswap_unit_ui(is_img2img, unit_num=1, id_prefix="faceswaplab"):
                     elem_id=f"{id_prefix}_face{unit_num}_refresh_checkpoints",
                 )
 
-                def refresh_fn(selected):
+                def refresh_fn(selected: str) -> None:
                     return gr.Dropdown.update(
                         value=selected, choices=get_face_checkpoints()
                     )

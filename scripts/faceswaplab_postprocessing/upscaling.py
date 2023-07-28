@@ -1,11 +1,10 @@
 from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,
-    InpaintingWhen,
 )
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
 from PIL import Image
 import numpy as np
-from modules import shared, processing, codeformer_model
+from modules import codeformer_model
 
 
 def upscale_img(image: Image.Image, pp_options: PostProcessingOptions) -> Image.Image:

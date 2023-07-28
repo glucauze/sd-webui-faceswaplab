@@ -1,7 +1,7 @@
 import copy
 import os
 from dataclasses import dataclass
-from typing import Dict, List, Set, Tuple, Optional, Union
+from typing import Any, Dict, List, Set, Tuple, Optional
 
 import cv2
 import insightface
@@ -13,7 +13,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from scripts.faceswaplab_swapping import upscaled_inswapper
 from scripts.faceswaplab_utils.imgutils import (
-    cv2_to_pil,
     pil_to_cv2,
     check_against_nsfw,
 )
@@ -26,7 +25,7 @@ from scripts.faceswaplab_ui.faceswaplab_unit_settings import FaceSwapUnitSetting
 providers = ["CPUExecutionProvider"]
 
 
-def cosine_similarity_face(face1, face2) -> float:
+def cosine_similarity_face(face1: Face, face2: Face) -> float:
     """
     Calculates the cosine similarity between two face embeddings.
 
@@ -92,7 +91,7 @@ class FaceModelException(Exception):
 
 
 @lru_cache(maxsize=1)
-def getAnalysisModel():
+def getAnalysisModel() -> insightface.app.FaceAnalysis:
     """
     Retrieves the analysis model for face analysis.
 
@@ -112,11 +111,11 @@ def getAnalysisModel():
         logger.error(
             "Loading of swapping model failed, please check the requirements (On Windows, download and install Visual Studio. During the install, make sure to include the Python and C++ packages.)"
         )
-        raise FaceModelException("Loading of swapping model failed")
+        raise FaceModelException("Loading of analysis model failed")
 
 
 @lru_cache(maxsize=1)
-def getFaceSwapModel(model_path: str):
+def getFaceSwapModel(model_path: str) -> upscaled_inswapper.UpscaledINSwapper:
     """
     Retrieves the face swap model and initializes it if necessary.
 
@@ -135,13 +134,14 @@ def getFaceSwapModel(model_path: str):
         logger.error(
             "Loading of swapping model failed, please check the requirements (On Windows, download and install Visual Studio. During the install, make sure to include the Python and C++ packages.)"
         )
+        raise FaceModelException("Loading of swapping model failed")
 
 
 def get_faces(
-    img_data: np.ndarray,
-    det_size=(640, 640),
-    det_thresh: Optional[int] = None,
-    sort_by_face_size=False,
+    img_data: np.ndarray,  # type: ignore
+    det_size: Tuple[int, int] = (640, 640),
+    det_thresh: Optional[float] = None,
+    sort_by_face_size: bool = False,
 ) -> List[Face]:
     """
     Detects and retrieves faces from an image using an analysis model.
@@ -211,7 +211,7 @@ class ImageResult:
     """
 
 
-def get_or_default(l, index, default):
+def get_or_default(l: List[Any], index: int, default: Any) -> Any:
     """
     Retrieve the value at the specified index from the given list.
     If the index is out of bounds, return the default value instead.
@@ -227,7 +227,10 @@ def get_or_default(l, index, default):
     return l[index] if index < len(l) else default
 
 
-def get_faces_from_img_files(files):
+import gradio as gr
+
+
+def get_faces_from_img_files(files: List[gr.File]) -> List[Optional[np.ndarray]]:  # type: ignore
     """
     Extracts faces from a list of image files.
 
@@ -300,15 +303,15 @@ def blend_faces(faces: List[Face]) -> Face:
 
 
 def swap_face(
-    reference_face: np.ndarray,
-    source_face: np.ndarray,
+    reference_face: np.ndarray,  # type: ignore
+    source_face: np.ndarray,  # type: ignore
     target_img: Image.Image,
     model: str,
     faces_index: Set[int] = {0},
-    same_gender=True,
-    upscaled_swapper=False,
-    compute_similarity=True,
-    sort_by_face_size=False,
+    same_gender: bool = True,
+    upscaled_swapper: bool = False,
+    compute_similarity: bool = True,
+    sort_by_face_size: bool = False,
 ) -> ImageResult:
     """
     Swaps faces in the target image with the source face.
@@ -344,6 +347,7 @@ def swap_face(
             for i, swapped_face in enumerate(target_faces):
                 logger.info(f"swap face {i}")
                 if i in faces_index:
+                    # type : ignore
                     result = face_swapper.get(
                         result, swapped_face, source_face, upscale=upscaled_swapper
                     )
@@ -385,13 +389,13 @@ def swap_face(
 
 
 def process_image_unit(
-    model,
+    model: str,
     unit: FaceSwapUnitSettings,
     image: Image.Image,
-    info=None,
-    upscaled_swapper=False,
-    force_blend=False,
-) -> List:
+    info: str = None,
+    upscaled_swapper: bool = False,
+    force_blend: bool = False,
+) -> List[Tuple[Image.Image, str]]:
     """Process one image and return a List of (image, info) (one if blended, many if not).
 
     Args:
@@ -472,12 +476,12 @@ def process_image_unit(
 
 
 def process_images_units(
-    model,
+    model: str,
     units: List[FaceSwapUnitSettings],
     images: List[Tuple[Optional[Image.Image], Optional[str]]],
-    upscaled_swapper=False,
-    force_blend=False,
-) -> Union[List, None]:
+    upscaled_swapper: bool = False,
+    force_blend: bool = False,
+) -> Optional[List[Tuple[Image.Image, str]]]:
     if len(units) == 0:
         logger.info("Finished processing image, return %s images", len(images))
         return None

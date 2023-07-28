@@ -1,13 +1,12 @@
+from typing import List
 import gradio as gr
 import modules
 from modules import shared, sd_models
-from modules.shared import cmd_opts, opts, state
-
-import scripts.faceswaplab_postprocessing.upscaling as upscaling
-from scripts.faceswaplab_utils.faceswaplab_logging import logger
+from modules.shared import opts
+from scripts.faceswaplab_postprocessing.postprocessing_options import InpaintingWhen
 
 
-def upscaler_ui():
+def upscaler_ui() -> List[gr.components.Component]:
     with gr.Tab(f"Post-Processing"):
         gr.Markdown(
             """Upscaling is performed on the whole image. Upscaling happens before face restoration."""
@@ -74,10 +73,8 @@ def upscaler_ui():
             )
             inpainting_when = gr.Dropdown(
                 elem_id="faceswaplab_pp_inpainting_when",
-                choices=[
-                    e.value for e in upscaling.InpaintingWhen.__members__.values()
-                ],
-                value=[upscaling.InpaintingWhen.BEFORE_RESTORE_FACE.value],
+                choices=[e.value for e in InpaintingWhen.__members__.values()],
+                value=[InpaintingWhen.BEFORE_RESTORE_FACE.value],
                 label="Enable/When",
             )
             inpainting_denoising_strength = gr.Slider(
