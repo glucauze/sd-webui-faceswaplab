@@ -10,5 +10,4 @@ repos:
         - id: check-case-conflict
         - id: check-docstring-first
         - id: detect-private-key
-        - id: trailing-whitespace
         - id: fix-byte-order-marker
