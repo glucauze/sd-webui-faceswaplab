@@ -253,4 +253,4 @@ class FaceSwapScript(scripts.Script):
                 processed.images = images
                 processed.infotexts = infotexts
         except Exception as e:
-            logger.error("Failed to swap face %s in postprocess method", e)
+            logger.error("Failed to swap face in postprocess method : %s", e)

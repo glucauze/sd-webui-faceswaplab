@@ -28,7 +28,6 @@ from typing import Any, Dict, List, Optional
 from scripts.faceswaplab_ui.faceswaplab_unit_settings import FaceSwapUnitSettings
 from scripts.faceswaplab_utils.models_utils import get_current_model
 import re
-from scripts.faceswaplab_globals import REFERENCE_PATH
 
 
 def compare(img1: Image.Image, img2: Image.Image) -> str:
@@ -53,7 +52,7 @@ def compare(img1: Image.Image, img2: Image.Image) -> str:
 
 
 def extract_faces(
-    files: Optional[List[str]],
+    files: List[gr.File],
     extract_path: Optional[str],
     *components: List[gr.components.Component],
 ) -> Optional[List[str]]:
@@ -84,7 +83,7 @@ def extract_faces(
         if files:
             images = []
             for file in files:
-                img = Image.open(file).convert("RGB")
+                img = Image.open(file.name)
                 faces = swapper.get_faces(pil_to_cv2(img))
 
                 if faces:
@@ -114,7 +113,9 @@ def extract_faces(
             return images
     except Exception as e:
         logger.info("Failed to extract : %s", e)
+        import traceback
 
+        traceback.print_exc()
     return None
 
 
@@ -195,7 +196,9 @@ def build_face_checkpoint_and_save(
         logger.info("Build %s %s", name, [x.name for x in batch_files])
         faces = swapper.get_faces_from_img_files(batch_files)
         blended_face = swapper.blend_faces(faces)
-        preview_path = REFERENCE_PATH
+        preview_path = os.path.join(
+            scripts.basedir(), "extensions", "sd-webui-faceswaplab", "references"
+        )
 
         faces_path = os.path.join(scripts.basedir(), "models", "faceswaplab", "faces")
 
@@ -311,11 +314,11 @@ def batch_process(
         logger.debug("%s", pformat(postprocess_options))
 
         units = [u for u in units if u.enable]
-        if files is not None:
+        if files is not None and len(units) > 0:
             images = []
             for file in files:
                 current_images = []
-                src_image = Image.open(file.name).convert("RGB")
+                src_image = Image.open(file.name)
                 swapped_images = swapper.process_images_units(
                     get_current_model(),
                     images=[(src_image, None)],
