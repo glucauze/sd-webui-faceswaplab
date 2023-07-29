@@ -2,7 +2,7 @@ from PIL import Image
 import numpy as np
 from fastapi import FastAPI
 from modules.api import api
-from scripts.faceswaplab_api.faceswaplab_api_types import (
+from client_api.api_utils import (
     FaceSwapResponse,
 )
 from scripts.faceswaplab_globals import VERSION_FLAG
@@ -16,7 +16,7 @@ from scripts.faceswaplab_utils.imgutils import (
 from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,
 )
-from scripts.faceswaplab_api import faceswaplab_api_types
+from client_api import api_utils
 from scripts.faceswaplab_postprocessing.postprocessing_options import InpaintingWhen
 
 
@@ -59,7 +59,7 @@ def encode_np_to_base64(image: np.ndarray) -> str:  # type: ignore
 
 
 def get_postprocessing_options(
-    options: faceswaplab_api_types.PostProcessingOptions,
+    options: api_utils.PostProcessingOptions,
 ) -> PostProcessingOptions:
     pp_options = PostProcessingOptions(
         face_restorer_name=options.face_restorer_name,
@@ -73,7 +73,9 @@ def get_postprocessing_options(
         inpainting_negative_prompt=options.inpainting_negative_prompt,
         inpainting_steps=options.inpainting_steps,
         inpainting_sampler=options.inpainting_sampler,
-        inpainting_when=options.inpainting_when,
+        # hacky way to prevent having a separate file for Inpainting when (2 classes)
+        # therfore a conversion is required from api IW to server side IW
+        inpainting_when=InpaintingWhen(options.inpainting_when.value),
         inpainting_model=options.inpainting_model,
     )
 
@@ -85,7 +87,7 @@ def get_postprocessing_options(
 
 
 def get_faceswap_units_settings(
-    api_units: List[faceswaplab_api_types.FaceSwapUnit],
+    api_units: List[api_utils.FaceSwapUnit],
 ) -> List[FaceSwapUnitSettings]:
     units = []
     for u in api_units:
@@ -127,8 +129,8 @@ def faceswaplab_api(_: gr.Blocks, app: FastAPI) -> None:
         description="Swap a face in an image using units",
     )
     async def swap_face(
-        request: faceswaplab_api_types.FaceSwapRequest,
-    ) -> faceswaplab_api_types.FaceSwapResponse:
+        request: api_utils.FaceSwapRequest,
+    ) -> api_utils.FaceSwapResponse:
         units: List[FaceSwapUnitSettings] = []
         src_image: Optional[Image.Image] = base64_to_pil(request.image)
         response = FaceSwapResponse(images=[], infos=[])
@@ -147,3 +149,15 @@ def faceswaplab_api(_: gr.Blocks, app: FastAPI) -> None:
 
             response.infos = []  # Not used atm
         return response
+
+    @app.post(
+        "/faceswaplab/compare",
+        tags=["faceswaplab"],
+        description="Compare first face of each images",
+    )
+    async def compare(
+        request: api_utils.FaceSwapCompareRequest,
+    ) -> float:
+        return swapper.compare_faces(
+            base64_to_pil(request.image1), base64_to_pil(request.image2)
+        )

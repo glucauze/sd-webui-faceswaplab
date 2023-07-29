@@ -27,6 +27,7 @@ from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,
 )
 from scripts.faceswaplab_utils.models_utils import get_current_model
+import gradio as gr
 
 
 providers = ["CPUExecutionProvider"]
@@ -91,6 +92,21 @@ def batch_process(
     units: List[FaceSwapUnitSettings],
     postprocess_options: PostProcessingOptions,
 ) -> Optional[List[Image.Image]]:
+    """
+    Process a batch of images, apply face swapping according to the given settings, and optionally save the resulting images to a specified path.
+
+    Args:
+        src_images (List[Image.Image]): List of source PIL Images to process.
+        save_path (Optional[str]): Destination path where the processed images will be saved. If None, no images are saved.
+        units (List[FaceSwapUnitSettings]): List of FaceSwapUnitSettings to apply to the images.
+        postprocess_options (PostProcessingOptions): Post-processing settings to be applied to the images.
+
+    Returns:
+        Optional[List[Image.Image]]: List of processed images, or None in case of an exception.
+
+    Raises:
+        Any exceptions raised by the underlying process will be logged and the function will return None.
+    """
     try:
         if save_path:
             os.makedirs(save_path, exist_ok=True)
@@ -279,9 +295,6 @@ def get_or_default(l: List[Any], index: int, default: Any) -> Any:
         The value at the specified index if it exists, otherwise the default value.
     """
     return l[index] if index < len(l) else default
-
-
-import gradio as gr
 
 
 def get_faces_from_img_files(files: List[gr.File]) -> List[Optional[np.ndarray]]:  # type: ignore
@@ -536,6 +549,25 @@ def process_images_units(
     upscaled_swapper: bool = False,
     force_blend: bool = False,
 ) -> Optional[List[Tuple[Image.Image, str]]]:
+    """
+    Process a list of images using a specified model and unit settings for face swapping.
+
+    Args:
+        model (str): The name of the model to use for processing.
+        units (List[FaceSwapUnitSettings]): A list of settings for face swap units to apply on each image.
+        images (List[Tuple[Optional[Image.Image], Optional[str]]]): A list of tuples, each containing
+            an image and its associated info string. If an image or info string is not available,
+            its value can be None.
+        upscaled_swapper (bool, optional): If True, uses an upscaled version of the face swapper.
+            Defaults to False.
+        force_blend (bool, optional): If True, forces the blending of the swapped face on the original
+            image. Defaults to False.
+
+    Returns:
+        Optional[List[Tuple[Image.Image, str]]]: A list of tuples, each containing a processed image
+            and its associated info string. If no units are provided for processing, returns None.
+
+    """
     if len(units) == 0:
         logger.info("Finished processing image, return %s images", len(images))
         return None

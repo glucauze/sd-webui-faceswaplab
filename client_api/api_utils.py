@@ -1,10 +1,20 @@
-from typing import List, Optional, Tuple
+# Keep a copy of this file here, it is used by the server side api
+
+from typing import List, Tuple
 from PIL import Image
-from scripts.faceswaplab_utils.imgutils import (
-    base64_to_pil,
-)
 from pydantic import BaseModel, Field
-from scripts.faceswaplab_postprocessing.postprocessing_options import InpaintingWhen
+from enum import Enum
+import base64, io
+from io import BytesIO
+from typing import List, Tuple, Optional
+import numpy as np
+
+
+class InpaintingWhen(Enum):
+    NEVER = "Never"
+    BEFORE_UPSCALING = "Before Upscaling/all"
+    BEFORE_RESTORE_FACE = "After Upscaling/Before Restore Face"
+    AFTER_ALL = "After All"
 
 
 class FaceSwapUnit(BaseModel):
@@ -142,3 +152,43 @@ class FaceSwapRequest(BaseModel):
 class FaceSwapResponse(BaseModel):
     images: List[str] = Field(description="base64 swapped image", default=None)
     infos: List[str]
+
+    @property
+    def pil_images(self) -> Image.Image:
+        return [base64_to_pil(img) for img in self.images]
+
+
+class FaceSwapCompareRequest(BaseModel):
+    image1: str = Field(
+        description="base64 reference image",
+        examples=["data:image/jpeg;base64,/9j/4AAQSkZJRgABAQECWAJYAAD...."],
+        default=None,
+    )
+    image2: str = Field(
+        description="base64 reference image",
+        examples=["data:image/jpeg;base64,/9j/4AAQSkZJRgABAQECWAJYAAD...."],
+        default=None,
+    )
+
+
+def pil_to_base64(img: Image.Image) -> np.array:  # type:ignore
+    if isinstance(img, str):
+        img = Image.open(img)
+
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+    img_data = buffer.getvalue()
+    base64_data = base64.b64encode(img_data)
+    return base64_data.decode("utf-8")
+
+
+def base64_to_pil(base64str: Optional[str]) -> Optional[Image.Image]:
+    if base64str is None:
+        return None
+    if "base64," in base64str:  # check if the base64 string has a data URL scheme
+        base64_data = base64str.split("base64,")[-1]
+        img_bytes = base64.b64decode(base64_data)
+    else:
+        # if no data URL scheme, just decode
+        img_bytes = base64.b64decode(base64str)
+    return Image.open(io.BytesIO(img_bytes))

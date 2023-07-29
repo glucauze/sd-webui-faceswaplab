@@ -5,7 +5,7 @@ import sys
 
 sys.path.append(".")
 
-from client_api.client_utils import (
+from client_api.api_utils import (
     FaceSwapUnit,
     FaceSwapResponse,
     PostProcessingOptions,
@@ -13,6 +13,7 @@ from client_api.client_utils import (
     base64_to_pil,
     pil_to_base64,
     InpaintingWhen,
+    FaceSwapCompareRequest,
 )
 from PIL import Image
 
@@ -62,6 +63,22 @@ def test_version() -> None:
     assert "version" in response.json()
 
 
+def test_compare() -> None:
+    request = FaceSwapCompareRequest(
+        image1=pil_to_base64("references/man.png"),
+        image2=pil_to_base64("references/man.png"),
+    )
+
+    response = requests.post(
+        url=f"{base_url}/faceswaplab/compare",
+        data=request.json(),
+        headers={"Content-Type": "application/json; charset=utf-8"},
+    )
+    assert response.status_code == 200
+    similarity = float(response.text)
+    assert similarity > 0.90
+
+
 def test_faceswap(face_swap_request: FaceSwapRequest) -> None:
     response = requests.post(
         f"{base_url}/faceswaplab/swap_face",
@@ -81,3 +98,19 @@ def test_faceswap(face_swap_request: FaceSwapRequest) -> None:
     orig_image = base64_to_pil(face_swap_request.image)
     assert image.width == orig_image.width * face_swap_request.postprocessing.scale
     assert image.height == orig_image.height * face_swap_request.postprocessing.scale
+
+    # Compare the result and ensure similarity for the man (first face)
+
+    request = FaceSwapCompareRequest(
+        image1=pil_to_base64("references/man.png"),
+        image2=res.images[0],
+    )
+
+    response = requests.post(
+        url=f"{base_url}/faceswaplab/compare",
+        data=request.json(),
+        headers={"Content-Type": "application/json; charset=utf-8"},
+    )
+    assert response.status_code == 200
+    similarity = float(response.text)
+    assert similarity > 0.50

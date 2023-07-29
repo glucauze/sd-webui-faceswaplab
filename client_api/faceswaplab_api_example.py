@@ -1,11 +1,12 @@
 import requests
-from client_utils import (
+from api_utils import (
     FaceSwapRequest,
     FaceSwapUnit,
     PostProcessingOptions,
     FaceSwapResponse,
     pil_to_base64,
     InpaintingWhen,
+    FaceSwapCompareRequest,
 )
 
 address = "http://127.0.0.1:7860"
@@ -48,6 +49,19 @@ result = requests.post(
 )
 response = FaceSwapResponse.parse_obj(result.json())
 
-print(response.json())
 for img in response.pil_images:
     img.show()
+
+
+request = FaceSwapCompareRequest(
+    image1=pil_to_base64("../references/man.png"),
+    image2=pil_to_base64(response.pil_images[0]),
+)
+
+result = requests.post(
+    url=f"{address}/faceswaplab/compare",
+    data=request.json(),
+    headers={"Content-Type": "application/json; charset=utf-8"},
+)
+
+print("similarity", result.text)
