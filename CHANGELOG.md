@@ -1,4 +1,14 @@
+## 1.1.1 :
+
++ Add settings for default inpainting prompts
++ Add better api support
++ Add api tests
++ bug fixes (extract, upscaling)
++ improve code checking and formatting (black, mypy, and pre-commit hooks)
+
+
 ## 1.1.0 :
+
 All listed in features
 
 + add inpainting model selection => allow to select a different model for face inpainting
