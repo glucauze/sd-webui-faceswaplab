@@ -13,9 +13,6 @@ from scripts.faceswaplab_ui.faceswaplab_unit_settings import FaceSwapUnitSetting
 from scripts.faceswaplab_utils.imgutils import (
     base64_to_pil,
 )
-from scripts.faceswaplab_utils.models_utils import get_current_model
-from modules.shared import opts
-from scripts.faceswaplab_postprocessing.postprocessing import enhance_image
 from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,
 )
@@ -135,22 +132,18 @@ def faceswaplab_api(_: gr.Blocks, app: FastAPI) -> None:
         units: List[FaceSwapUnitSettings] = []
         src_image: Optional[Image.Image] = base64_to_pil(request.image)
         response = FaceSwapResponse(images=[], infos=[])
-        if request.postprocessing:
-            pp_options = get_postprocessing_options(request.postprocessing)
 
         if src_image is not None:
+            if request.postprocessing:
+                pp_options = get_postprocessing_options(request.postprocessing)
             units = get_faceswap_units_settings(request.units)
 
-            swapped_images = swapper.process_images_units(
-                get_current_model(),
-                images=[(src_image, None)],
-                units=units,
-                upscaled_swapper=opts.data.get("faceswaplab_upscaled_swapper", False),
+            swapped_images = swapper.batch_process(
+                [src_image], None, units=units, postprocess_options=pp_options
             )
-            for img, info in swapped_images:
-                if pp_options:
-                    img = enhance_image(img, pp_options)
-                response.images.append(encode_to_base64(img))
-                response.infos.append(info)
 
+            for img in swapped_images:
+                response.images.append(encode_to_base64(img))
+
+            response.infos = []  # Not used atm
         return response

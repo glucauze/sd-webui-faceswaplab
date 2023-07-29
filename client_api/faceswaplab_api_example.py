@@ -12,13 +12,13 @@ address = "http://127.0.0.1:7860"
 
 # First face unit :
 unit1 = FaceSwapUnit(
-    source_img=pil_to_base64("../../references/man.png"),  # The face you want to use
+    source_img=pil_to_base64("../references/man.png"),  # The face you want to use
     faces_index=(0,),  # Replace first face
 )
 
 # Second face unit :
 unit2 = FaceSwapUnit(
-    source_img=pil_to_base64("../../references/woman.png"),  # The face you want to use
+    source_img=pil_to_base64("../references/woman.png"),  # The face you want to use
     same_gender=True,
     faces_index=(0,),  # Replace first woman since same gender is on
 )
@@ -48,5 +48,6 @@ result = requests.post(
 )
 response = FaceSwapResponse.parse_obj(result.json())
 
-for img, info in zip(response.pil_images, response.infos):
-    img.show(title=info)
+print(response.json())
+for img in response.pil_images:
+    img.show()

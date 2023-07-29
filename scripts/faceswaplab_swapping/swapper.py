@@ -2,6 +2,7 @@ import copy
 import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Set, Tuple, Optional
+import tempfile
 
 import cv2
 import insightface
@@ -21,6 +22,12 @@ from scripts import faceswaplab_globals
 from modules.shared import opts
 from functools import lru_cache
 from scripts.faceswaplab_ui.faceswaplab_unit_settings import FaceSwapUnitSettings
+from scripts.faceswaplab_postprocessing.postprocessing import enhance_image
+from scripts.faceswaplab_postprocessing.postprocessing_options import (
+    PostProcessingOptions,
+)
+from scripts.faceswaplab_utils.models_utils import get_current_model
+
 
 providers = ["CPUExecutionProvider"]
 
@@ -76,6 +83,53 @@ def compare_faces(img1: Image.Image, img2: Image.Image) -> float:
 
     # Return -1 if one or both of the images do not contain any faces
     return -1
+
+
+def batch_process(
+    src_images: List[Image.Image],
+    save_path: Optional[str],
+    units: List[FaceSwapUnitSettings],
+    postprocess_options: PostProcessingOptions,
+) -> Optional[List[Image.Image]]:
+    try:
+        if save_path:
+            os.makedirs(save_path, exist_ok=True)
+
+        units = [u for u in units if u.enable]
+        if src_images is not None and len(units) > 0:
+            result_images = []
+            for src_image in src_images:
+                current_images = []
+                swapped_images = process_images_units(
+                    get_current_model(),
+                    images=[(src_image, None)],
+                    units=units,
+                    upscaled_swapper=opts.data.get(
+                        "faceswaplab_upscaled_swapper", False
+                    ),
+                )
+                if len(swapped_images) > 0:
+                    current_images += [img for img, _ in swapped_images]
+
+                logger.info("%s images generated", len(current_images))
+                for i, img in enumerate(current_images):
+                    current_images[i] = enhance_image(img, postprocess_options)
+
+                if save_path:
+                    for img in current_images:
+                        path = tempfile.NamedTemporaryFile(
+                            delete=False, suffix=".png", dir=save_path
+                        ).name
+                        img.save(path)
+
+                result_images += current_images
+            return result_images
+    except Exception as e:
+        logger.error("Batch Process error : %s", e)
+        import traceback
+
+        traceback.print_exc()
+    return None
 
 
 class FaceModelException(Exception):

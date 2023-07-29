@@ -26,7 +26,6 @@ from scripts.faceswaplab_postprocessing.postprocessing import enhance_image
 from dataclasses import fields
 from typing import Any, Dict, List, Optional
 from scripts.faceswaplab_ui.faceswaplab_unit_settings import FaceSwapUnitSettings
-from scripts.faceswaplab_utils.models_utils import get_current_model
 import re
 
 
@@ -291,9 +290,6 @@ def batch_process(
     files: List[gr.File], save_path: str, *components: List[gr.components.Component]
 ) -> Optional[List[Image.Image]]:
     try:
-        if save_path is not None:
-            os.makedirs(save_path, exist_ok=True)
-
         units_count = opts.data.get("faceswaplab_units_count", 3)
         units: List[FaceSwapUnitSettings] = []
 
@@ -312,36 +308,15 @@ def batch_process(
             *components[shift : shift + len(fields(PostProcessingOptions))]  # type: ignore
         )
         logger.debug("%s", pformat(postprocess_options))
-
-        units = [u for u in units if u.enable]
-        if files is not None and len(units) > 0:
-            images = []
-            for file in files:
-                current_images = []
-                src_image = Image.open(file.name)
-                swapped_images = swapper.process_images_units(
-                    get_current_model(),
-                    images=[(src_image, None)],
-                    units=units,
-                    upscaled_swapper=opts.data.get(
-                        "faceswaplab_upscaled_swapper", False
-                    ),
-                )
-                if len(swapped_images) > 0:
-                    current_images += [img for img, _ in swapped_images]
-
-                logger.info("%s images generated", len(current_images))
-                for i, img in enumerate(current_images):
-                    current_images[i] = enhance_image(img, postprocess_options)
-
-                for img in current_images:
-                    path = tempfile.NamedTemporaryFile(
-                        delete=False, suffix=".png", dir=save_path
-                    ).name
-                    img.save(path)
-
-                images += current_images
-            return images
+        images = [
+            Image.open(file.name) for file in files
+        ]  # potentially greedy but Image.open is supposed to be lazy
+        return swapper.batch_process(
+            images,
+            save_path=save_path,
+            units=units,
+            postprocess_options=postprocess_options,
+        )
     except Exception as e:
         logger.error("Batch Process error : %s", e)
         import traceback
