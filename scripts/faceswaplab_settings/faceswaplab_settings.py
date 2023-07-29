@@ -41,12 +41,14 @@ def on_ui_settings() -> None:
         "faceswaplab_detection_threshold",
         shared.OptionInfo(
             0.5,
-            "Detection threshold ",
+            "Face Detection threshold",
             gr.Slider,
             {"minimum": 0.1, "maximum": 0.99, "step": 0.001},
             section=section,
         ),
     )
+
+    # DEFAULT UI SETTINGS
 
     shared.opts.add_option(
         "faceswaplab_pp_default_face_restorer",
@@ -104,6 +106,30 @@ def on_ui_settings() -> None:
             section=section,
         ),
     )
+
+    shared.opts.add_option(
+        "faceswaplab_pp_default_inpainting_prompt",
+        shared.OptionInfo(
+            "Portrait of a [gender]",
+            "UI Default inpainting prompt [gender] is replaced by man or woman (requires restart)",
+            gr.Textbox,
+            {},
+            section=section,
+        ),
+    )
+
+    shared.opts.add_option(
+        "faceswaplab_pp_default_inpainting_negative_prompt",
+        shared.OptionInfo(
+            "blurry",
+            "UI Default inpainting negative prompt [gender] (requires restart)",
+            gr.Textbox,
+            {},
+            section=section,
+        ),
+    )
+
+    # UPSCALED SWAPPER
 
     shared.opts.add_option(
         "faceswaplab_upscaled_swapper",

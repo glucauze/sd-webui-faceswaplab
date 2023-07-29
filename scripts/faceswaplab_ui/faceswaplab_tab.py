@@ -1,5 +1,4 @@
 import os
-import tempfile
 from pprint import pformat, pprint
 
 import dill as pickle
@@ -8,14 +7,13 @@ import modules.scripts as scripts
 import onnx
 import pandas as pd
 from scripts.faceswaplab_ui.faceswaplab_unit_ui import faceswap_unit_ui
-from scripts.faceswaplab_ui.faceswaplab_upscaler_ui import upscaler_ui
+from scripts.faceswaplab_ui.faceswaplab_postprocessing_ui import postprocessing_ui
 from insightface.app.common import Face
 from modules import scripts
 from PIL import Image
 from modules.shared import opts
 
 from scripts.faceswaplab_utils import imgutils
-from scripts.faceswaplab_utils.imgutils import pil_to_cv2
 from scripts.faceswaplab_utils.models_utils import get_models
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
 import scripts.faceswaplab_swapping.swapper as swapper
@@ -54,7 +52,7 @@ def extract_faces(
     files: List[gr.File],
     extract_path: Optional[str],
     *components: List[gr.components.Component],
-) -> Optional[List[str]]:
+) -> Optional[List[Image.Image]]:
     """
     Extracts faces from a list of image files.
 
@@ -73,49 +71,13 @@ def extract_faces(
                          If no faces are found, None is returned.
     """
 
-    try:
-        postprocess_options = PostProcessingOptions(*components)  # type: ignore
-
-        if not extract_path:
-            extract_path = tempfile.mkdtemp()
-
-        if files:
-            images = []
-            for file in files:
-                img = Image.open(file.name)
-                faces = swapper.get_faces(pil_to_cv2(img))
-
-                if faces:
-                    face_images = []
-                    for face in faces:
-                        bbox = face.bbox.astype(int)
-                        x_min, y_min, x_max, y_max = bbox
-                        face_image = img.crop((x_min, y_min, x_max, y_max))
-
-                        if (
-                            postprocess_options.face_restorer_name
-                            or postprocess_options.restorer_visibility
-                        ):
-                            postprocess_options.scale = (
-                                1 if face_image.width > 512 else 512 // face_image.width
-                            )
-                            face_image = enhance_image(face_image, postprocess_options)
-
-                        path = tempfile.NamedTemporaryFile(
-                            delete=False, suffix=".png", dir=extract_path
-                        ).name
-                        face_image.save(path)
-                        face_images.append(path)
-
-                    images += face_images
-
-            return images
-    except Exception as e:
-        logger.info("Failed to extract : %s", e)
-        import traceback
-
-        traceback.print_exc()
-    return None
+    postprocess_options = PostProcessingOptions(*components)  # type: ignore
+    images = [
+        Image.open(file.name) for file in files
+    ]  # potentially greedy but Image.open is supposed to be lazy
+    return swapper.extract_faces(
+        images, extract_path=extract_path, postprocess_options=postprocess_options
+    )
 
 
 def analyse_faces(image: Image.Image, det_threshold: float = 0.5) -> Optional[str]:
@@ -459,7 +421,7 @@ def tools_ui() -> None:
         for i in range(1, opts.data.get("faceswaplab_units_count", 3) + 1):
             unit_components += faceswap_unit_ui(False, i, id_prefix="faceswaplab_tab")
 
-    upscale_options = upscaler_ui()
+    upscale_options = postprocessing_ui()
 
     explore_btn.click(
         explore_onnx_faceswap_model, inputs=[model], outputs=[explore_result_text]

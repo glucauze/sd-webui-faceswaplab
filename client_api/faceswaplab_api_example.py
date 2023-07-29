@@ -7,9 +7,15 @@ from api_utils import (
     pil_to_base64,
     InpaintingWhen,
     FaceSwapCompareRequest,
+    FaceSwapExtractRequest,
+    FaceSwapExtractResponse,
 )
 
 address = "http://127.0.0.1:7860"
+
+
+#############################
+# FaceSwap
 
 # First face unit :
 unit1 = FaceSwapUnit(
@@ -41,7 +47,7 @@ request = FaceSwapRequest(
     image=pil_to_base64("test_image.png"), units=[unit1, unit2], postprocessing=pp
 )
 
-
+# Face Swap
 result = requests.post(
     url=f"{address}/faceswaplab/swap_face",
     data=request.json(),
@@ -52,6 +58,8 @@ response = FaceSwapResponse.parse_obj(result.json())
 for img in response.pil_images:
     img.show()
 
+#############################
+# Comparison
 
 request = FaceSwapCompareRequest(
     image1=pil_to_base64("../references/man.png"),
@@ -65,3 +73,21 @@ result = requests.post(
 )
 
 print("similarity", result.text)
+
+#############################
+# Extraction
+
+# Prepare the request
+request = FaceSwapExtractRequest(
+    images=[pil_to_base64(response.pil_images[0])], postprocessing=pp
+)
+
+result = requests.post(
+    url=f"{address}/faceswaplab/extract",
+    data=request.json(),
+    headers={"Content-Type": "application/json; charset=utf-8"},
+)
+response = FaceSwapExtractResponse.parse_obj(result.json())
+
+for img in response.pil_images:
+    img.show()

@@ -14,6 +14,9 @@ from client_api.api_utils import (
     pil_to_base64,
     InpaintingWhen,
     FaceSwapCompareRequest,
+    FaceSwapExtractRequest,
+    FaceSwapExtractResponse,
+    compare_faces,
 )
 from PIL import Image
 
@@ -77,6 +80,38 @@ def test_compare() -> None:
     assert response.status_code == 200
     similarity = float(response.text)
     assert similarity > 0.90
+
+
+def test_extract() -> None:
+    pp = PostProcessingOptions(
+        face_restorer_name="CodeFormer",
+        codeformer_weight=0.5,
+        restorer_visibility=1,
+        upscaler_name="Lanczos",
+    )
+
+    request = FaceSwapExtractRequest(
+        images=[pil_to_base64("tests/test_image.png")], postprocessing=pp
+    )
+
+    response = requests.post(
+        url=f"{base_url}/faceswaplab/extract",
+        data=request.json(),
+        headers={"Content-Type": "application/json; charset=utf-8"},
+    )
+    assert response.status_code == 200
+
+    res = FaceSwapExtractResponse.parse_obj(response.json())
+
+    assert len(res.pil_images) == 2
+
+    # First face is the man
+    assert (
+        compare_faces(
+            res.pil_images[0], Image.open("tests/test_image.png"), base_url=base_url
+        )
+        > 0.5
+    )
 
 
 def test_faceswap(face_swap_request: FaceSwapRequest) -> None:

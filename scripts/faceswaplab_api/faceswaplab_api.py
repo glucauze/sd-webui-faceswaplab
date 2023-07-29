@@ -161,3 +161,22 @@ def faceswaplab_api(_: gr.Blocks, app: FastAPI) -> None:
         return swapper.compare_faces(
             base64_to_pil(request.image1), base64_to_pil(request.image2)
         )
+
+    @app.post(
+        "/faceswaplab/extract",
+        tags=["faceswaplab"],
+        description="Extract faces of each images",
+    )
+    async def extract(
+        request: api_utils.FaceSwapExtractRequest,
+    ) -> api_utils.FaceSwapExtractResponse:
+        pp_options = None
+        if request.postprocessing:
+            pp_options = get_postprocessing_options(request.postprocessing)
+        images = [base64_to_pil(img) for img in request.images]
+        faces = swapper.extract_faces(
+            images, extract_path=None, postprocess_options=pp_options
+        )
+        result_images = [encode_to_base64(img) for img in faces]
+        response = api_utils.FaceSwapExtractResponse(images=result_images)
+        return response

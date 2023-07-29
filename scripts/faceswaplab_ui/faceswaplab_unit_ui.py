@@ -108,7 +108,7 @@ def faceswap_unit_ui(
                     elem_id=f"{id_prefix}_face{unit_num}_sort_by_size",
                 )
             target_faces_index = gr.Textbox(
-                value="0",
+                value=f"{unit_num-1}",
                 placeholder="Which face to swap (comma separated), start from 0 (by gender if same_gender is enabled)",
                 label="Target face : Comma separated face number(s)",
                 elem_id=f"{id_prefix}_face{unit_num}_target_faces_index",

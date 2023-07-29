@@ -6,7 +6,7 @@ from modules.shared import opts
 from scripts.faceswaplab_postprocessing.postprocessing_options import InpaintingWhen
 
 
-def upscaler_ui() -> List[gr.components.Component]:
+def postprocessing_ui() -> List[gr.components.Component]:
     with gr.Tab(f"Post-Processing"):
         gr.Markdown(
             """Upscaling is performed on the whole image. Upscaling happens before face restoration."""
@@ -87,12 +87,16 @@ def upscaler_ui() -> List[gr.components.Component]:
             )
 
             inpainting_denoising_prompt = gr.Textbox(
-                "Portrait of a [gender]",
+                opts.data.get(
+                    "faceswaplab_pp_default_inpainting_prompt", "Portrait of a [gender]"
+                ),
                 elem_id="faceswaplab_pp_inpainting_denoising_prompt",
                 label="Inpainting prompt use [gender] instead of men or woman",
             )
             inpainting_denoising_negative_prompt = gr.Textbox(
-                "",
+                opts.data.get(
+                    "faceswaplab_pp_default_inpainting_negative_prompt", "blurry"
+                ),
                 elem_id="faceswaplab_pp_inpainting_denoising_neg_prompt",
                 label="Inpainting negative prompt use [gender] instead of men or woman",
             )

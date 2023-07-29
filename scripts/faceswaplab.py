@@ -110,7 +110,7 @@ class FaceSwapScript(scripts.Script):
             components = []
             for i in range(1, self.units_count + 1):
                 components += faceswaplab_unit_ui.faceswap_unit_ui(is_img2img, i)
-            upscaler = faceswaplab_tab.upscaler_ui()
+            upscaler = faceswaplab_tab.postprocessing_ui()
         # If the order is modified, the before_process should be changed accordingly.
         return components + upscaler
 
