@@ -1,5 +1,5 @@
 from typing import List
-from scripts.faceswaplab_utils.models_utils import get_face_checkpoints
+from scripts.faceswaplab_utils.face_utils import get_face_checkpoints
 import gradio as gr
 
 

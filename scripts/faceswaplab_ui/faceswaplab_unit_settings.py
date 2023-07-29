@@ -4,12 +4,12 @@ import base64
 import io
 from dataclasses import dataclass, fields
 from typing import Any, List, Optional, Set, Union
-import dill as pickle
 import gradio as gr
 from insightface.app.common import Face
 from PIL import Image
 from scripts.faceswaplab_utils.imgutils import pil_to_cv2
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
+from scripts.faceswaplab_utils import face_utils
 
 
 @dataclass
@@ -94,8 +94,8 @@ class FaceSwapUnitSettings:
             if self.source_face and self.source_face != "None":
                 with open(self.source_face, "rb") as file:
                     try:
-                        logger.info(f"loading pickle {file.name}")
-                        face = Face(pickle.load(file))
+                        logger.info(f"loading face {file.name}")
+                        face = face_utils.load_face(file.name)
                         self._reference_face = face
                     except Exception as e:
                         logger.error("Failed to load checkpoint  : %s", e)

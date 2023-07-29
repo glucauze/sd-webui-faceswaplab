@@ -43,20 +43,3 @@ def get_current_model() -> str:
             "No faceswap model found. Please add it to the faceswaplab directory."
         )
     return model
-
-
-def get_face_checkpoints() -> List[str]:
-    """
-    Retrieve a list of face checkpoint paths.
-
-    This function searches for face files with the extension ".pkl" in the specified directory and returns a list
-    containing the paths of those files.
-
-    Returns:
-        list: A list of face paths, including the string "None" as the first element.
-    """
-    faces_path = os.path.join(
-        scripts.basedir(), "models", "faceswaplab", "faces", "*.pkl"
-    )
-    faces = glob.glob(faces_path)
-    return ["None"] + faces

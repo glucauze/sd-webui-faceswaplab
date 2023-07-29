@@ -1,5 +1,4 @@
 cython
-dill==0.3.6
 ifnude
 insightface==0.7.3
 onnx==1.14.0
