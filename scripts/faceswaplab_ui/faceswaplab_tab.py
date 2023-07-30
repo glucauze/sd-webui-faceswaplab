@@ -1,14 +1,12 @@
 import os
 from pprint import pformat, pprint
-
-import dill as pickle
+from scripts.faceswaplab_utils import face_utils
 import gradio as gr
 import modules.scripts as scripts
 import onnx
 import pandas as pd
 from scripts.faceswaplab_ui.faceswaplab_unit_ui import faceswap_unit_ui
 from scripts.faceswaplab_ui.faceswaplab_postprocessing_ui import postprocessing_ui
-from insightface.app.common import Face
 from modules import scripts
 from PIL import Image
 from modules.shared import opts
@@ -128,10 +126,17 @@ def analyse_faces(image: Image.Image, det_threshold: float = 0.5) -> Optional[st
 
 
 def sanitize_name(name: str) -> str:
-    logger.debug(f"Sanitize name {name}")
+    """
+    Sanitize the input name by removing special characters and replacing spaces with underscores.
+
+    Parameters:
+        name (str): The input name to be sanitized.
+
+    Returns:
+        str: The sanitized name with special characters removed and spaces replaced by underscores.
+    """
     name = re.sub("[^A-Za-z0-9_. ]+", "", name)
     name = name.replace(" ", "_")
-    logger.debug(f"Sanitized name {name[:255]}")
     return name[:255]
 
 
@@ -185,25 +190,19 @@ def build_face_checkpoint_and_save(
                 ),
             )
 
-            file_path = os.path.join(faces_path, f"{name}.pkl")
+            file_path = os.path.join(faces_path, f"{name}.safetensors")
             file_number = 1
             while os.path.exists(file_path):
-                file_path = os.path.join(faces_path, f"{name}_{file_number}.pkl")
+                file_path = os.path.join(
+                    faces_path, f"{name}_{file_number}.safetensors"
+                )
                 file_number += 1
             result_image.save(file_path + ".png")
-            with open(file_path, "wb") as file:
-                pickle.dump(
-                    {
-                        "embedding": blended_face.embedding,
-                        "gender": blended_face.gender,
-                        "age": blended_face.age,
-                    },
-                    file,
-                )
+
+            face_utils.save_face(filename=file_path, face=blended_face)
             try:
-                with open(file_path, "rb") as file:
-                    data = Face(pickle.load(file))
-                    print(data)
+                data = face_utils.load_face(filename=file_path)
+                print(data)
             except Exception as e:
                 print(e)
             return result_image

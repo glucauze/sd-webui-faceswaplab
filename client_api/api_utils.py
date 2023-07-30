@@ -28,7 +28,7 @@ class FaceSwapUnit(BaseModel):
     # The checkpoint file
     source_face: str = Field(
         description="face checkpoint (from models/faceswaplab/faces)",
-        examples=["my_face.pkl"],
+        examples=["my_face.safetensors"],
         default=None,
     )
     # base64 batch source images

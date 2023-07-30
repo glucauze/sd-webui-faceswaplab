@@ -1,3 +1,7 @@
+# 1.1.2 :
+
++ Switch face checkpoint format from pkl to safetensors
+
 ## 1.1.1 :
 
 + Add settings for default inpainting prompts
