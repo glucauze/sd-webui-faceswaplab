@@ -112,7 +112,7 @@ A face checkpoint is a saved embedding of a face, generated from multiple images
 
 The primary advantage of face checkpoints is their size. An embedding is only around 2KB, meaning it's lightweight and can be reused later without requiring additional calculations.
 
-Face checkpoints are saved as `.safetensors` files. Please be aware that exchanging `.safetensors` files carries potential security risks. These files, by default, are not secure and could potentially execute malicious code when opened. Therefore, extreme caution should be exercised when sharing or receiving this type of file.
+Face checkpoints are saved as `.safetensors` files.
 
 #### How is similarity determined?
 
