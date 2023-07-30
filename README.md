@@ -1,4 +1,4 @@
-# FaceSwapLab 1.1 for a1111/Vlad
+# FaceSwapLab for a1111/Vlad
 
 Please read the documentation here : https://glucauze.github.io/sd-webui-faceswaplab/
 
@@ -9,6 +9,16 @@ Some key features include the ability to reuse faces via checkpoints, multiple f
 ![](docs/assets/images/main_interface.png)
 
 While FaceSwapLab is still under development, it has reached a good level of stability. This makes it a reliable tool for those who are interested in face-swapping within the Stable Diffusion environment. As with all projects of this type, it’s expected to improve and evolve over time.
+
+## Disclaimer and license
+
+In short:
+
++ **Ethical Guideline:** This extension should not be forked to create a public, easy way to circumvent NSFW filtering.
++ **License:** This software is distributed under the terms of the GNU Affero General Public License (AGPL), version 3 or later.
++ **Model License:** This software uses InsightFace's pre-trained models, which are available for non-commercial research purposes only.
+
+More on this here : https://glucauze.github.io/sd-webui-faceswaplab/ 
 
 ### Features
 

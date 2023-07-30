@@ -1,12 +1,6 @@
 # 1.1.2 :
 
-+ BREAKING CHANGE : enforce face checkpoint format from pkl to safetensors
-
-Using pkl files to store faces is dangerous from a security point of view. For the same reason that models are now stored in safetensors, We are switching to safetensors for the storage format.
-
-A script with instructions for converting existing pkl files can be found here:
-https://gist.github.com/glucauze/4a3c458541f2278ad801f6625e5b9d3d
-
++ Switch face checkpoint format from pkl to safetensors
 
 ## 1.1.1 :
 
