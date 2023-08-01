@@ -1,13 +1,14 @@
 import requests
 from api_utils import (
-    FaceSwapRequest,
     FaceSwapUnit,
-    PostProcessingOptions,
-    FaceSwapResponse,
     pil_to_base64,
+    PostProcessingOptions,
     InpaintingWhen,
-    FaceSwapCompareRequest,
+    InpaintingOptions,
+    FaceSwapRequest,
+    FaceSwapResponse,
     FaceSwapExtractRequest,
+    FaceSwapCompareRequest,
     FaceSwapExtractResponse,
 )
 
@@ -37,9 +38,11 @@ pp = PostProcessingOptions(
     restorer_visibility=1,
     upscaler_name="Lanczos",
     scale=4,
-    inpainting_steps=30,
-    inpainting_denoising_strengh=0.1,
     inpainting_when=InpaintingWhen.BEFORE_RESTORE_FACE,
+    inpainting_options=InpaintingOptions(
+        inpainting_steps=30,
+        inpainting_denoising_strengh=0.1,
+    ),
 )
 
 # Prepare the request

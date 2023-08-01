@@ -1,3 +1,4 @@
+from typing import Any, Tuple, Union
 import cv2
 import numpy as np
 from insightface.model_zoo.inswapper import INSwapper
@@ -12,6 +13,7 @@ from scripts.faceswaplab_postprocessing.postprocessing_options import (
 )
 from scripts.faceswaplab_swapping.facemask import generate_face_mask
 from scripts.faceswaplab_utils.imgutils import cv2_to_pil, pil_to_cv2
+from scripts.faceswaplab_utils.typing import CV2ImgU8, Face
 
 
 def get_upscaler() -> UpscalerData:
@@ -23,7 +25,25 @@ def get_upscaler() -> UpscalerData:
     return None
 
 
-def merge_images_with_mask(image1, image2, mask):
+def merge_images_with_mask(
+    image1: CV2ImgU8, image2: CV2ImgU8, mask: CV2ImgU8
+) -> CV2ImgU8:
+    """
+    Merges two images using a given mask. The regions where the mask is set will be replaced with the corresponding
+    areas of the second image.
+
+    Args:
+        image1 (CV2Img): The base image, which must have the same shape as image2.
+        image2 (CV2Img): The image to be merged, which must have the same shape as image1.
+        mask (CV2Img): A binary mask specifying the regions to be merged. The mask shape should match image1's first two dimensions.
+
+    Returns:
+        CV2Img: The merged image.
+
+    Raises:
+        ValueError: If the shapes of the images and mask do not match.
+    """
+
     if image1.shape != image2.shape or image1.shape[:2] != mask.shape:
         raise ValueError("Img should have the same shape")
     mask = mask.astype(np.uint8)
@@ -34,42 +54,80 @@ def merge_images_with_mask(image1, image2, mask):
     return merged_image
 
 
-def erode_mask(mask, kernel_size=3, iterations=1):
+def erode_mask(mask: CV2ImgU8, kernel_size: int = 3, iterations: int = 1) -> CV2ImgU8:
+    """
+    Erodes a binary mask using a given kernel size and number of iterations.
+
+    Args:
+        mask (CV2Img): The binary mask to erode.
+        kernel_size (int, optional): The size of the kernel. Default is 3.
+        iterations (int, optional): The number of erosion iterations. Default is 1.
+
+    Returns:
+        CV2Img: The eroded mask.
+    """
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
     eroded_mask = cv2.erode(mask, kernel, iterations=iterations)
     return eroded_mask
 
 
-def apply_gaussian_blur(mask, kernel_size=(5, 5), sigma_x=0):
+def apply_gaussian_blur(
+    mask: CV2ImgU8, kernel_size: Tuple[int, int] = (5, 5), sigma_x: int = 0
+) -> CV2ImgU8:
+    """
+    Applies a Gaussian blur to a mask.
+
+    Args:
+        mask (CV2Img): The mask to blur.
+        kernel_size (tuple, optional): The size of the kernel, e.g. (5, 5). Default is (5, 5).
+        sigma_x (int, optional): The standard deviation in the X direction. Default is 0.
+
+    Returns:
+        CV2Img: The blurred mask.
+    """
     blurred_mask = cv2.GaussianBlur(mask, kernel_size, sigma_x)
     return blurred_mask
 
 
-def dilate_mask(mask, kernel_size=5, iterations=1):
+def dilate_mask(mask: CV2ImgU8, kernel_size: int = 5, iterations: int = 1) -> CV2ImgU8:
+    """
+    Dilates a binary mask using a given kernel size and number of iterations.
+
+    Args:
+        mask (CV2Img): The binary mask to dilate.
+        kernel_size (int, optional): The size of the kernel. Default is 5.
+        iterations (int, optional): The number of dilation iterations. Default is 1.
+
+    Returns:
+        CV2Img: The dilated mask.
+    """
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
     dilated_mask = cv2.dilate(mask, kernel, iterations=iterations)
     return dilated_mask
 
 
-def get_face_mask(aimg, bgr_fake):
+def get_face_mask(aimg: CV2ImgU8, bgr_fake: CV2ImgU8) -> CV2ImgU8:
+    """
+    Generates a face mask by performing bitwise OR on two face masks and then dilating the result.
+
+    Args:
+        aimg (CV2Img): Input image for generating the first face mask.
+        bgr_fake (CV2Img): Input image for generating the second face mask.
+
+    Returns:
+        CV2Img: The combined and dilated face mask.
+    """
     mask1 = generate_face_mask(aimg, device=shared.device)
     mask2 = generate_face_mask(bgr_fake, device=shared.device)
     mask = dilate_mask(cv2.bitwise_or(mask1, mask2))
     return mask
 
 
-class UpscaledINSwapper:
+class UpscaledINSwapper(INSwapper):
     def __init__(self, inswapper: INSwapper):
         self.__dict__.update(inswapper.__dict__)
 
-    def forward(self, img, latent):
-        img = (img - self.input_mean) / self.input_std
-        pred = self.session.run(
-            self.output_names, {self.input_names[0]: img, self.input_names[1]: latent}
-        )[0]
-        return pred
-
-    def super_resolution(self, img, k=2):
+    def super_resolution(self, img: CV2ImgU8, k: int = 2) -> CV2ImgU8:
         pil_img = cv2_to_pil(img)
         options = PostProcessingOptions(
             upscaler_name=opts.data.get(
@@ -91,7 +149,14 @@ class UpscaledINSwapper:
         upscaled = upscaling.restore_face(upscaled, options)
         return pil_to_cv2(upscaled)
 
-    def get(self, img, target_face, source_face, paste_back=True, upscale=True):
+    def get(
+        self,
+        img: CV2ImgU8,
+        target_face: Face,
+        source_face: Face,
+        paste_back: bool = True,
+        upscale: bool = True,
+    ) -> Union[CV2ImgU8, Tuple[CV2ImgU8, Any]]:
         aimg, M = face_align.norm_crop2(img, target_face.kps, self.input_size[0])
         blob = cv2.dnn.blobFromImage(
             aimg,
@@ -116,7 +181,7 @@ class UpscaledINSwapper:
             else:
                 target_img = img
 
-                def compute_diff(bgr_fake, aimg):
+                def compute_diff(bgr_fake: CV2ImgU8, aimg: CV2ImgU8) -> CV2ImgU8:
                     fake_diff = bgr_fake.astype(np.float32) - aimg.astype(np.float32)
                     fake_diff = np.abs(fake_diff).mean(axis=2)
                     fake_diff[:2, :] = 0

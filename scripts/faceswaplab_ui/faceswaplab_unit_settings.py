@@ -1,15 +1,16 @@
 from scripts.faceswaplab_swapping import swapper
-import numpy as np
 import base64
 import io
-from dataclasses import dataclass, fields
-from typing import Any, List, Optional, Set, Union
+from dataclasses import dataclass
+from typing import List, Optional, Set, Union
 import gradio as gr
 from insightface.app.common import Face
 from PIL import Image
 from scripts.faceswaplab_utils.imgutils import pil_to_cv2
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
 from scripts.faceswaplab_utils import face_utils
+from scripts.faceswaplab_inpainting.faceswaplab_inpainting import InpaintingOptions
+from client_api import api_utils
 
 
 @dataclass
@@ -17,11 +18,11 @@ class FaceSwapUnitSettings:
     # ORDER of parameters is IMPORTANT. It should match the result of faceswap_unit_ui
 
     # The image given in reference
-    source_img: Union[Image.Image, str]
+    source_img: Optional[Union[Image.Image, str]]
     # The checkpoint file
-    source_face: str
+    source_face: Optional[str]
     # The batch source images
-    _batch_files: Union[gr.components.File, List[Image.Image]]
+    _batch_files: Optional[Union[gr.components.File, List[Image.Image]]]
     # Will blend faces if True
     blend_faces: bool
     # Enable this unit
@@ -48,14 +49,39 @@ class FaceSwapUnitSettings:
     swap_in_source: bool
     # Swap in the generated image in img2img (always on for txt2img)
     swap_in_generated: bool
+    # Pre inpainting configuration (Don't use optional for this or gradio parsing will fail) :
+    pre_inpainting: InpaintingOptions
+    # Post inpainting configuration (Don't use optional for this or gradio parsing will fail) :
+    post_inpainting: InpaintingOptions
 
     @staticmethod
-    def get_unit_configuration(
-        unit: int, components: List[gr.components.Component]
-    ) -> Any:
-        fields_count = len(fields(FaceSwapUnitSettings))
+    def from_api_dto(dto: api_utils.FaceSwapUnit) -> "FaceSwapUnitSettings":
+        """
+        Converts a InpaintingOptions object from an API DTO (Data Transfer Object).
+
+        :param options: An object of api_utils.InpaintingOptions representing the
+                        post-processing options as received from the API.
+        :return: A InpaintingOptions instance containing the translated values
+                from the API DTO.
+        """
         return FaceSwapUnitSettings(
-            *components[unit * fields_count : unit * fields_count + fields_count]
+            source_img=api_utils.base64_to_pil(dto.source_img),
+            source_face=dto.source_face,
+            _batch_files=dto.get_batch_images(),
+            blend_faces=dto.blend_faces,
+            enable=True,
+            same_gender=dto.same_gender,
+            sort_by_size=dto.sort_by_size,
+            check_similarity=dto.check_similarity,
+            _compute_similarity=dto.compute_similarity,
+            min_ref_sim=dto.min_ref_sim,
+            min_sim=dto.min_sim,
+            _faces_index=",".join([str(i) for i in (dto.faces_index)]),
+            reference_face_index=dto.reference_face_index,
+            swap_in_generated=True,
+            swap_in_source=False,
+            pre_inpainting=InpaintingOptions.from_api_dto(dto.pre_inpainting),
+            post_inpainting=InpaintingOptions.from_api_dto(dto.post_inpainting),
         )
 
     @property
@@ -156,24 +182,5 @@ class FaceSwapUnitSettings:
         """
         if not hasattr(self, "_blended_faces"):
             self._blended_faces = swapper.blend_faces(self.faces)
-            assert (
-                all(
-                    [
-                        not np.array_equal(
-                            self._blended_faces.embedding, face.embedding
-                        )
-                        for face in self.faces
-                    ]
-                )
-                if len(self.faces) > 1
-                else True
-            ), "Blended faces cannot be the same as one of the face if len(face)>0"
-            assert (
-                not np.array_equal(
-                    self._blended_faces.embedding, self.reference_face.embedding
-                )
-                if len(self.faces) > 1
-                else True
-            ), "Blended faces cannot be the same as reference face if len(face)>0"
 
         return self._blended_faces

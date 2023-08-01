@@ -1,4 +1,5 @@
 from typing import List
+from scripts.faceswaplab_ui.faceswaplab_inpainting_ui import face_inpainting_ui
 from scripts.faceswaplab_utils.face_utils import get_face_checkpoints
 import gradio as gr
 
@@ -142,22 +143,39 @@ def faceswap_unit_ui(
                 visible=is_img2img,
                 elem_id=f"{id_prefix}_face{unit_num}_swap_in_generated",
             )
+        pre_inpainting = face_inpainting_ui(
+            name="Pre-Inpainting (Before swapping)",
+            id_prefix=f"{id_prefix}_face{unit_num}_preinpainting",
+            description="Pre-inpainting sends face to inpainting before swapping",
+        )
+        post_inpainting = face_inpainting_ui(
+            name="Post-Inpainting (After swapping)",
+            id_prefix=f"{id_prefix}_face{unit_num}_postinpainting",
+            description="Post-inpainting sends face to inpainting after swapping",
+        )
+
+    gradio_components: List[gr.components.Component] = (
+        [
+            img,
+            face,
+            batch_files,
+            blend_faces,
+            enable,
+            same_gender,
+            sort_by_size,
+            check_similarity,
+            compute_similarity,
+            min_sim,
+            min_ref_sim,
+            target_faces_index,
+            reference_faces_index,
+            swap_in_source,
+            swap_in_generated,
+        ]
+        + pre_inpainting
+        + post_inpainting
+    )
+
     # If changed, you need to change FaceSwapUnitSettings accordingly
     # ORDER of parameters is IMPORTANT. It should match the result of FaceSwapUnitSettings
-    return [
-        img,
-        face,
-        batch_files,
-        blend_faces,
-        enable,
-        same_gender,
-        sort_by_size,
-        check_similarity,
-        compute_similarity,
-        min_sim,
-        min_ref_sim,
-        target_faces_index,
-        reference_faces_index,
-        swap_in_source,
-        swap_in_generated,
-    ]
+    return gradio_components

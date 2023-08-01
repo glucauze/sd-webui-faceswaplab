@@ -7,7 +7,7 @@ import tempfile
 import cv2
 import insightface
 import numpy as np
-from insightface.app.common import Face
+from insightface.app.common import Face as ISFace
 
 from PIL import Image
 from sklearn.metrics.pairwise import cosine_similarity
@@ -28,7 +28,8 @@ from scripts.faceswaplab_postprocessing.postprocessing_options import (
 )
 from scripts.faceswaplab_utils.models_utils import get_current_model
 import gradio as gr
-
+from scripts.faceswaplab_utils.typing import CV2ImgU8, PILImage, Face
+from scripts.faceswaplab_inpainting.i2i_pp import img2img_diffusion
 
 providers = ["CPUExecutionProvider"]
 
@@ -60,7 +61,7 @@ def cosine_similarity_face(face1: Face, face2: Face) -> float:
     return max(0, similarity[0, 0])
 
 
-def compare_faces(img1: Image.Image, img2: Image.Image) -> float:
+def compare_faces(img1: PILImage, img2: PILImage) -> float:
     """
     Compares the similarity between two faces extracted from images using cosine similarity.
 
@@ -87,22 +88,22 @@ def compare_faces(img1: Image.Image, img2: Image.Image) -> float:
 
 
 def batch_process(
-    src_images: List[Image.Image],
+    src_images: List[PILImage],
     save_path: Optional[str],
     units: List[FaceSwapUnitSettings],
     postprocess_options: PostProcessingOptions,
-) -> Optional[List[Image.Image]]:
+) -> Optional[List[PILImage]]:
     """
     Process a batch of images, apply face swapping according to the given settings, and optionally save the resulting images to a specified path.
 
     Args:
-        src_images (List[Image.Image]): List of source PIL Images to process.
+        src_images (List[PILImage]): List of source PIL Images to process.
         save_path (Optional[str]): Destination path where the processed images will be saved. If None, no images are saved.
         units (List[FaceSwapUnitSettings]): List of FaceSwapUnitSettings to apply to the images.
         postprocess_options (PostProcessingOptions): Post-processing settings to be applied to the images.
 
     Returns:
-        Optional[List[Image.Image]]: List of processed images, or None in case of an exception.
+        Optional[List[PILImage]]: List of processed images, or None in case of an exception.
 
     Raises:
         Any exceptions raised by the underlying process will be logged and the function will return None.
@@ -149,7 +150,7 @@ def batch_process(
 
 
 def extract_faces(
-    images: List[Image.Image],
+    images: List[PILImage],
     extract_path: Optional[str],
     postprocess_options: PostProcessingOptions,
 ) -> Optional[List[str]]:
@@ -206,7 +207,7 @@ def extract_faces(
 
             return result_images
     except Exception as e:
-        logger.info("Failed to extract : %s", e)
+        logger.error("Failed to extract : %s", e)
         import traceback
 
         traceback.print_exc()
@@ -273,16 +274,15 @@ def getFaceSwapModel(model_path: str) -> upscaled_inswapper.UpscaledINSwapper:
 
 
 def get_faces(
-    img_data: np.ndarray,  # type: ignore
+    img_data: CV2ImgU8,
     det_size: Tuple[int, int] = (640, 640),
     det_thresh: Optional[float] = None,
-    sort_by_face_size: bool = False,
 ) -> List[Face]:
     """
     Detects and retrieves faces from an image using an analysis model.
 
     Args:
-        img_data (np.ndarray): The image data as a NumPy array.
+        img_data (CV2ImgU8): The image data as a NumPy array.
         det_size (tuple): The desired detection size (width, height). Defaults to (640, 640).
         sort_by_face_size (bool) : Will sort the faces by their size from larger to smaller face
 
@@ -309,17 +309,46 @@ def get_faces(
         return get_faces(img_data, det_size=det_size_half, det_thresh=det_thresh)
 
     try:
-        if sort_by_face_size:
-            return sorted(
-                face,
-                reverse=True,
-                key=lambda x: (x.bbox[2] - x.bbox[0]) * (x.bbox[3] - x.bbox[1]),
-            )
-
         # Sort the detected faces based on their x-coordinate of the bounding box
         return sorted(face, key=lambda x: x.bbox[0])
     except Exception as e:
         return []
+
+
+def filter_faces(
+    all_faces: List[Face],
+    faces_index: Set[int],
+    source_gender: int = None,
+    sort_by_face_size: bool = False,
+) -> List[Face]:
+    """
+    Sorts and filters a list of faces based on specified criteria.
+
+    This function takes a list of Face objects and can sort them by face size and filter them by gender.
+    Sorting by face size is performed if sort_by_face_size is set to True, and filtering by gender is
+    performed if source_gender is provided.
+
+    :param faces: A list of Face objects representing the faces to be sorted and filtered.
+    :param faces_index: A set of faces index
+    :param source_gender: An optional integer representing the gender by which to filter the faces.
+                          If provided, only faces with the specified gender will be included in the result.
+    :param sort_by_face_size: A boolean indicating whether to sort the faces by size. If True, faces are
+                              sorted in descending order by size, calculated as the area of the bounding box.
+    :return: A list of Face objects sorted and filtered according to the specified criteria.
+    """
+    filtered_faces = copy.copy(all_faces)
+    if sort_by_face_size:
+        filtered_faces = sorted(
+            all_faces,
+            reverse=True,
+            key=lambda x: (x.bbox[2] - x.bbox[0]) * (x.bbox[3] - x.bbox[1]),
+        )
+
+    if source_gender is not None:
+        filtered_faces = [
+            face for face in filtered_faces if face["gender"] == source_gender
+        ]
+    return [face for i, face in enumerate(filtered_faces) if i in faces_index]
 
 
 @dataclass
@@ -328,7 +357,7 @@ class ImageResult:
     Represents the result of an image swap operation
     """
 
-    image: Image.Image
+    image: PILImage
     """
     The image object with the swapped face
     """
@@ -362,7 +391,7 @@ def get_or_default(l: List[Any], index: int, default: Any) -> Any:
     return l[index] if index < len(l) else default
 
 
-def get_faces_from_img_files(files: List[gr.File]) -> List[Optional[np.ndarray]]:  # type: ignore
+def get_faces_from_img_files(files: List[gr.File]) -> List[Optional[CV2ImgU8]]:
     """
     Extracts faces from a list of image files.
 
@@ -388,7 +417,7 @@ def get_faces_from_img_files(files: List[gr.File]) -> List[Optional[np.ndarray]]
     return faces
 
 
-def blend_faces(faces: List[Face]) -> Face:
+def blend_faces(faces: List[Face]) -> Optional[Face]:
     """
     Blends the embeddings of multiple faces into a single face.
 
@@ -418,15 +447,9 @@ def blend_faces(faces: List[Face]) -> Face:
 
         # Create a new Face object using the properties of the first face in the list
         # Assign the blended embedding to the blended Face object
-        blended = Face(
+        blended = ISFace(
             embedding=blended_embedding, gender=faces[0].gender, age=faces[0].age
         )
-
-        assert (
-            not np.array_equal(blended.embedding, faces[0].embedding)
-            if len(faces) > 1
-            else True
-        ), "If len(faces)>0, the blended embedding should not be the same than the first image"
 
         return blended
 
@@ -435,85 +458,80 @@ def blend_faces(faces: List[Face]) -> Face:
 
 
 def swap_face(
-    reference_face: np.ndarray,  # type: ignore
-    source_face: np.ndarray,  # type: ignore
-    target_img: Image.Image,
+    reference_face: CV2ImgU8,
+    source_face: Face,
+    target_img: PILImage,
+    target_faces: List[Face],
     model: str,
-    faces_index: Set[int] = {0},
-    same_gender: bool = True,
     upscaled_swapper: bool = False,
     compute_similarity: bool = True,
-    sort_by_face_size: bool = False,
 ) -> ImageResult:
     """
     Swaps faces in the target image with the source face.
 
     Args:
-        reference_face (np.ndarray): The reference face used for similarity comparison.
-        source_face (np.ndarray): The source face to be swapped.
-        target_img (Image.Image): The target image to swap faces in.
+        reference_face (CV2ImgU8): The reference face used for similarity comparison.
+        source_face (CV2ImgU8): The source face to be swapped.
+        target_img (PILImage): The target image to swap faces in.
         model (str): Path to the face swap model.
-        faces_index (Set[int], optional): Set of indices specifying which faces to swap. Defaults to {0}.
-        same_gender (bool, optional): If True, only swap faces with the same gender as the source face. Defaults to True.
 
     Returns:
         ImageResult: An object containing the swapped image and similarity scores.
 
     """
     return_result = ImageResult(target_img, {}, {})
+    target_img_cv2: CV2ImgU8 = cv2.cvtColor(np.array(target_img), cv2.COLOR_RGB2BGR)
     try:
-        target_img = cv2.cvtColor(np.array(target_img), cv2.COLOR_RGB2BGR)
         gender = source_face["gender"]
         logger.info("Source Gender %s", gender)
         if source_face is not None:
-            result = target_img
+            result = target_img_cv2
             model_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), model)
             face_swapper = getFaceSwapModel(model_path)
-            target_faces = get_faces(target_img, sort_by_face_size=sort_by_face_size)
             logger.info("Target faces count : %s", len(target_faces))
-
-            if same_gender:
-                target_faces = [x for x in target_faces if x["gender"] == gender]
-                logger.info("Target Gender Matches count %s", len(target_faces))
 
             for i, swapped_face in enumerate(target_faces):
                 logger.info(f"swap face {i}")
-                if i in faces_index:
-                    # type : ignore
-                    result = face_swapper.get(
-                        result, swapped_face, source_face, upscale=upscaled_swapper
-                    )
+
+                result = face_swapper.get(
+                    img=result,
+                    target_face=swapped_face,
+                    source_face=source_face,
+                    upscale=upscaled_swapper,
+                )  # type: ignore
 
             result_image = Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
             return_result.image = result_image
 
-            if compute_similarity:
-                try:
-                    result_faces = get_faces(
-                        cv2.cvtColor(np.array(result_image), cv2.COLOR_RGB2BGR),
-                        sort_by_face_size=sort_by_face_size,
-                    )
-                    if same_gender:
-                        result_faces = [
-                            x for x in result_faces if x["gender"] == gender
-                        ]
+            # FIXME : recompute similarity
 
-                    for i, swapped_face in enumerate(result_faces):
-                        logger.info(f"compare face {i}")
-                        if i in faces_index and i < len(target_faces):
-                            return_result.similarity[i] = cosine_similarity_face(
-                                source_face, swapped_face
-                            )
-                            return_result.ref_similarity[i] = cosine_similarity_face(
-                                reference_face, swapped_face
-                            )
+            # if compute_similarity:
+            #     try:
+            #         result_faces = get_faces(
+            #             cv2.cvtColor(np.array(result_image), cv2.COLOR_RGB2BGR),
+            #             sort_by_face_size=sort_by_face_size,
+            #         )
+            #         if same_gender:
+            #             result_faces = [
+            #                 x for x in result_faces if x["gender"] == gender
+            #             ]
 
-                        logger.info(f"similarity {return_result.similarity}")
-                        logger.info(f"ref similarity {return_result.ref_similarity}")
+            #         for i, swapped_face in enumerate(result_faces):
+            #             logger.info(f"compare face {i}")
+            #             if i in faces_index and i < len(target_faces):
+            #                 return_result.similarity[i] = cosine_similarity_face(
+            #                     source_face, swapped_face
+            #                 )
+            #                 return_result.ref_similarity[i] = cosine_similarity_face(
+            #                     reference_face, swapped_face
+            #                 )
 
-                except Exception as e:
-                    logger.error("Similarity processing failed %s", e)
-                    raise e
+            #             logger.info(f"similarity {return_result.similarity}")
+            #             logger.info(f"ref similarity {return_result.ref_similarity}")
+
+            # except Exception as e:
+            #     logger.error("Similarity processing failed %s", e)
+            #     raise e
     except Exception as e:
         logger.error("Conversion failed %s", e)
         raise e
@@ -523,11 +541,11 @@ def swap_face(
 def process_image_unit(
     model: str,
     unit: FaceSwapUnitSettings,
-    image: Image.Image,
+    image: PILImage,
     info: str = None,
     upscaled_swapper: bool = False,
     force_blend: bool = False,
-) -> List[Tuple[Image.Image, str]]:
+) -> List[Tuple[PILImage, str]]:
     """Process one image and return a List of (image, info) (one if blended, many if not).
 
     Args:
@@ -541,6 +559,8 @@ def process_image_unit(
 
     results = []
     if unit.enable:
+        faces = get_faces(pil_to_cv2(image))
+
         if check_against_nsfw(image):
             return [(image, info)]
         if not unit.blend_faces and not force_blend:
@@ -549,15 +569,10 @@ def process_image_unit(
         else:
             logger.info("blend all faces together")
             src_faces = [unit.blended_faces]
-            assert (
-                not np.array_equal(
-                    unit.reference_face.embedding, src_faces[0].embedding
-                )
-                if len(unit.faces) > 1
-                else True
-            ), "Reference face cannot be the same as blended"
 
         for i, src_face in enumerate(src_faces):
+            current_image = image
+
             logger.info(f"Process face {i}")
             if unit.reference_face is not None:
                 reference_face = unit.reference_face
@@ -565,18 +580,35 @@ def process_image_unit(
                 logger.info("Use source face as reference face")
                 reference_face = src_face
 
-            save_img_debug(image, "Before swap")
-            result: ImageResult = swap_face(
-                reference_face,
-                src_face,
-                image,
+            target_faces = filter_faces(
+                faces,
                 faces_index=unit.faces_index,
-                model=model,
-                same_gender=unit.same_gender,
-                upscaled_swapper=upscaled_swapper,
-                compute_similarity=unit.compute_similarity,
+                source_gender=src_face["gender"] if unit.same_gender else None,
                 sort_by_face_size=unit.sort_by_size,
             )
+
+            # Apply pre-inpainting to image
+            if unit.pre_inpainting.inpainting_denoising_strengh > 0:
+                current_image = img2img_diffusion(
+                    img=current_image, faces=target_faces, options=unit.pre_inpainting
+                )
+
+            save_img_debug(image, "Before swap")
+            result: ImageResult = swap_face(
+                reference_face=reference_face,
+                source_face=src_face,
+                target_img=current_image,
+                target_faces=target_faces,
+                model=model,
+                upscaled_swapper=upscaled_swapper,
+                compute_similarity=unit.compute_similarity,
+            )
+            # Apply post-inpainting to image
+            if unit.post_inpainting.inpainting_denoising_strengh > 0:
+                result.image = img2img_diffusion(
+                    img=result.image, faces=target_faces, options=unit.post_inpainting
+                )
+
             save_img_debug(result.image, "After swap")
 
             if result.image is None:
@@ -610,17 +642,17 @@ def process_image_unit(
 def process_images_units(
     model: str,
     units: List[FaceSwapUnitSettings],
-    images: List[Tuple[Optional[Image.Image], Optional[str]]],
+    images: List[Tuple[Optional[PILImage], Optional[str]]],
     upscaled_swapper: bool = False,
     force_blend: bool = False,
-) -> Optional[List[Tuple[Image.Image, str]]]:
+) -> Optional[List[Tuple[PILImage, str]]]:
     """
     Process a list of images using a specified model and unit settings for face swapping.
 
     Args:
         model (str): The name of the model to use for processing.
         units (List[FaceSwapUnitSettings]): A list of settings for face swap units to apply on each image.
-        images (List[Tuple[Optional[Image.Image], Optional[str]]]): A list of tuples, each containing
+        images (List[Tuple[Optional[PILImage], Optional[str]]]): A list of tuples, each containing
             an image and its associated info string. If an image or info string is not available,
             its value can be None.
         upscaled_swapper (bool, optional): If True, uses an upscaled version of the face swapper.
@@ -629,7 +661,7 @@ def process_images_units(
             image. Defaults to False.
 
     Returns:
-        Optional[List[Tuple[Image.Image, str]]]: A list of tuples, each containing a processed image
+        Optional[List[Tuple[PILImage, str]]]: A list of tuples, each containing a processed image
             and its associated info string. If no units are provided for processing, returns None.
 
     """

@@ -20,7 +20,7 @@ def get_parsing_model(device: torch_device) -> torch.nn.Module:
     Returns:
         The parsing model.
     """
-    return init_parsing_model(device=device)
+    return init_parsing_model(device=device)  # type: ignore
 
 
 def convert_image_to_tensor(

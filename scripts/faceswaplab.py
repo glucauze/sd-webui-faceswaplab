@@ -1,16 +1,16 @@
 import importlib
-from scripts.faceswaplab_api import faceswaplab_api
-from scripts.faceswaplab_settings import faceswaplab_settings
-from scripts.faceswaplab_ui import faceswaplab_tab, faceswaplab_unit_ui
-from scripts.faceswaplab_utils.models_utils import (
-    get_current_model,
-)
+import traceback
 
 from scripts import faceswaplab_globals
-from scripts.faceswaplab_swapping import swapper
-from scripts.faceswaplab_utils import faceswaplab_logging, imgutils
-from scripts.faceswaplab_utils import models_utils
+from scripts.faceswaplab_api import faceswaplab_api
 from scripts.faceswaplab_postprocessing import upscaling
+from scripts.faceswaplab_settings import faceswaplab_settings
+from scripts.faceswaplab_swapping import swapper
+from scripts.faceswaplab_ui import faceswaplab_tab, faceswaplab_unit_ui
+from scripts.faceswaplab_utils import faceswaplab_logging, imgutils, models_utils
+from scripts.faceswaplab_utils.models_utils import get_current_model
+from scripts.faceswaplab_utils.typing import *
+from scripts.faceswaplab_utils.ui_utils import dataclasses_from_flat_list
 
 # Reload all the modules when using "apply and restart"
 # This is mainly done for development purposes
@@ -25,14 +25,12 @@ importlib.reload(faceswaplab_unit_ui)
 importlib.reload(faceswaplab_api)
 
 import os
-from dataclasses import fields
 from pprint import pformat
 from typing import Any, List, Optional, Tuple
 
 import gradio as gr
 import modules.scripts as scripts
-from modules import script_callbacks, scripts
-from modules import scripts, shared
+from modules import script_callbacks, scripts, shared
 from modules.images import save_image
 from modules.processing import (
     Processed,
@@ -40,16 +38,14 @@ from modules.processing import (
     StableDiffusionProcessingImg2Img,
 )
 from modules.shared import opts
-from PIL import Image
 
-from scripts.faceswaplab_utils.faceswaplab_logging import logger, save_img_debug
 from scripts.faceswaplab_globals import VERSION_FLAG
+from scripts.faceswaplab_postprocessing.postprocessing import enhance_image
 from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,
 )
-from scripts.faceswaplab_postprocessing.postprocessing import enhance_image
 from scripts.faceswaplab_ui.faceswaplab_unit_settings import FaceSwapUnitSettings
-
+from scripts.faceswaplab_utils.faceswaplab_logging import logger, save_img_debug
 
 EXTENSION_PATH = os.path.join("extensions", "sd-webui-faceswaplab")
 
@@ -62,7 +58,9 @@ try:
 
     script_callbacks.on_app_started(faceswaplab_api.faceswaplab_api)
 except:
-    pass
+    logger.error("Failed to register API")
+
+    traceback.print_exc()
 
 
 class FaceSwapScript(scripts.Script):
@@ -107,44 +105,39 @@ class FaceSwapScript(scripts.Script):
 
     def ui(self, is_img2img: bool) -> List[gr.components.Component]:
         with gr.Accordion(f"FaceSwapLab {VERSION_FLAG}", open=False):
-            components = []
+            components: List[gr.components.Component] = []
             for i in range(1, self.units_count + 1):
                 components += faceswaplab_unit_ui.faceswap_unit_ui(is_img2img, i)
-            upscaler = faceswaplab_tab.postprocessing_ui()
+            post_processing = faceswaplab_tab.postprocessing_ui()
         # If the order is modified, the before_process should be changed accordingly.
-        return components + upscaler
+        return components + post_processing
 
     def read_config(
-        self, p: StableDiffusionProcessing, *components: List[gr.components.Component]
+        self, p: StableDiffusionProcessing, *components: Tuple[Any, ...]
     ) -> None:
+        for i, c in enumerate(components):
+            logger.debug("%s>%s", i, pformat(c))
+
         # The order of processing for the components is important
         # The method first process faceswap units then postprocessing units
-
-        # self.make_first_script(p)
-
+        classes: List[Any] = dataclasses_from_flat_list(
+            [FaceSwapUnitSettings] * self.units_count + [PostProcessingOptions],
+            components,
+        )
         self.units: List[FaceSwapUnitSettings] = []
-
-        # Parse and convert units flat components into FaceSwapUnitSettings
-        for i in range(0, self.units_count):
-            self.units += [FaceSwapUnitSettings.get_unit_configuration(i, components)]
+        self.units += [u for u in classes if isinstance(u, FaceSwapUnitSettings)]
+        self.postprocess_options = classes[-1]
 
         for i, u in enumerate(self.units):
             logger.debug("%s, %s", pformat(i), pformat(u))
 
-        # Parse the postprocessing options
-        # We must first find where to start from (after face swapping units)
-        len_conf: int = len(fields(FaceSwapUnitSettings))
-        shift: int = self.units_count * len_conf
-        self.postprocess_options = PostProcessingOptions(
-            *components[shift : shift + len(fields(PostProcessingOptions))]  # type: ignore
-        )
         logger.debug("%s", pformat(self.postprocess_options))
 
         if self.enabled:
             p.do_not_save_samples = not self.keep_original_images
 
     def process(
-        self, p: StableDiffusionProcessing, *components: List[gr.components.Component]
+        self, p: StableDiffusionProcessing, *components: Tuple[Any, ...]
     ) -> None:
         try:
             self.read_config(p, *components)
@@ -152,7 +145,7 @@ class FaceSwapScript(scripts.Script):
             # If is instance of img2img, we check if face swapping in source is required.
             if isinstance(p, StableDiffusionProcessingImg2Img):
                 if self.enabled and len(self.swap_in_source_units) > 0:
-                    init_images: List[Tuple[Optional[Image.Image], Optional[str]]] = [
+                    init_images: List[Tuple[Optional[PILImage], Optional[str]]] = [
                         (img, None) for img in p.init_images
                     ]
                     new_inits = swapper.process_images_units(
@@ -167,6 +160,7 @@ class FaceSwapScript(scripts.Script):
                         p.init_images = [img[0] for img in new_inits]
         except Exception as e:
             logger.info("Failed to process : %s", e)
+            traceback.print_exc()
 
     def postprocess(
         self, p: StableDiffusionProcessing, processed: Processed, *args: List[Any]
@@ -174,7 +168,7 @@ class FaceSwapScript(scripts.Script):
         try:
             if self.enabled:
                 # Get the original images without the grid
-                orig_images: List[Image.Image] = processed.images[
+                orig_images: List[PILImage] = processed.images[
                     processed.index_of_first_image :
                 ]
                 orig_infotexts: List[str] = processed.infotexts[
@@ -237,13 +231,26 @@ class FaceSwapScript(scripts.Script):
 
                 # Generate grid :
                 if opts.return_grid and len(images) > 1:
-                    # FIXME :Use sd method, not that if blended is not active, the result will be a bit messy.
                     grid = imgutils.create_square_image(images)
                     text = processed.infotexts[0]
                     infotexts.insert(0, text)
                     if opts.enable_pnginfo:
                         grid.info["parameters"] = text
                     images.insert(0, grid)
+
+                    if opts.grid_save:
+                        save_image(
+                            grid,
+                            p.outpath_grids,
+                            "swapped-grid",
+                            p.all_seeds[0],
+                            p.all_prompts[0],
+                            opts.grid_format,
+                            info=text,
+                            short_filename=not opts.grid_extended_filename,
+                            p=p,
+                            grid=True,
+                        )
 
                 if keep_original:
                     # If we want to keep original images, we add all existing (including grid this time)
@@ -254,3 +261,4 @@ class FaceSwapScript(scripts.Script):
                 processed.infotexts = infotexts
         except Exception as e:
             logger.error("Failed to swap face in postprocess method : %s", e)
+            traceback.print_exc()

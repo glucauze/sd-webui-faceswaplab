@@ -18,6 +18,37 @@ class InpaintingWhen(Enum):
     AFTER_ALL = "After All"
 
 
+class InpaintingOptions(BaseModel):
+    inpainting_denoising_strengh: float = Field(
+        description="Inpainting denoising strenght", default=0, lt=1, ge=0
+    )
+    inpainting_prompt: str = Field(
+        description="Inpainting denoising strenght",
+        examples=["Portrait of a [gender]"],
+        default="Portrait of a [gender]",
+    )
+    inpainting_negative_prompt: str = Field(
+        description="Inpainting denoising strenght",
+        examples=[
+            "Deformed, blurry, bad anatomy, disfigured, poorly drawn face, mutation"
+        ],
+        default="",
+    )
+    inpainting_steps: int = Field(
+        description="Inpainting steps",
+        examples=["Portrait of a [gender]"],
+        ge=1,
+        le=150,
+        default=20,
+    )
+    inpainting_sampler: str = Field(
+        description="Inpainting sampler", examples=["Euler"], default="Euler"
+    )
+    inpainting_model: str = Field(
+        description="Inpainting model", examples=["Current"], default="Current"
+    )
+
+
 class FaceSwapUnit(BaseModel):
     # The image given in reference
     source_img: str = Field(
@@ -82,6 +113,16 @@ class FaceSwapUnit(BaseModel):
         default=0,
     )
 
+    pre_inpainting: Optional[InpaintingOptions] = Field(
+        description="Inpainting options",
+        default=None,
+    )
+
+    post_inpainting: Optional[InpaintingOptions] = Field(
+        description="Inpainting options",
+        default=None,
+    )
+
     def get_batch_images(self) -> List[Image.Image]:
         images = []
         if self.batch_images:
@@ -104,39 +145,15 @@ class PostProcessingOptions(BaseModel):
     upscaler_visibility: float = Field(
         description="upscaler visibility", default=1, le=1, ge=0
     )
-
-    inpainting_denoising_strengh: float = Field(
-        description="Inpainting denoising strenght", default=0, lt=1, ge=0
-    )
-    inpainting_prompt: str = Field(
-        description="Inpainting denoising strenght",
-        examples=["Portrait of a [gender]"],
-        default="Portrait of a [gender]",
-    )
-    inpainting_negative_prompt: str = Field(
-        description="Inpainting denoising strenght",
-        examples=[
-            "Deformed, blurry, bad anatomy, disfigured, poorly drawn face, mutation"
-        ],
-        default="",
-    )
-    inpainting_steps: int = Field(
-        description="Inpainting steps",
-        examples=["Portrait of a [gender]"],
-        ge=1,
-        le=150,
-        default=20,
-    )
-    inpainting_sampler: str = Field(
-        description="Inpainting sampler", examples=["Euler"], default="Euler"
-    )
     inpainting_when: InpaintingWhen = Field(
         description="When inpainting happens",
         examples=[e.value for e in InpaintingWhen.__members__.values()],
         default=InpaintingWhen.NEVER,
     )
-    inpainting_model: str = Field(
-        description="Inpainting model", examples=["Current"], default="Current"
+
+    inpainting_options: Optional[InpaintingOptions] = Field(
+        description="Inpainting options",
+        default=None,
     )
 
 

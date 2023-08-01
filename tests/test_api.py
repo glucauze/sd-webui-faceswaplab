@@ -17,6 +17,7 @@ from client_api.api_utils import (
     FaceSwapExtractRequest,
     FaceSwapExtractResponse,
     compare_faces,
+    InpaintingOptions,
 )
 from PIL import Image
 
@@ -45,11 +46,12 @@ def face_swap_request() -> FaceSwapRequest:
         restorer_visibility=1,
         upscaler_name="Lanczos",
         scale=4,
-        inpainting_steps=30,
-        inpainting_denoising_strengh=0.1,
         inpainting_when=InpaintingWhen.BEFORE_RESTORE_FACE,
+        inpainting_options=InpaintingOptions(
+            inpainting_steps=30,
+            inpainting_denoising_strengh=0.1,
+        ),
     )
-
     # Prepare the request
     request = FaceSwapRequest(
         image=pil_to_base64("tests/test_image.png"),
@@ -149,3 +151,31 @@ def test_faceswap(face_swap_request: FaceSwapRequest) -> None:
     assert response.status_code == 200
     similarity = float(response.text)
     assert similarity > 0.50
+
+
+def test_faceswap_inpainting(face_swap_request: FaceSwapRequest) -> None:
+    face_swap_request.units[0].pre_inpainting = InpaintingOptions(
+        inpainting_denoising_strengh=0.4,
+        inpainting_prompt="Photo of a funny man",
+        inpainting_negative_prompt="blurry, bad art",
+        inpainting_steps=100,
+    )
+
+    face_swap_request.units[0].post_inpainting = InpaintingOptions(
+        inpainting_denoising_strengh=0.4,
+        inpainting_prompt="Photo of a funny man",
+        inpainting_negative_prompt="blurry, bad art",
+        inpainting_steps=20,
+        inpainting_sampler="Euler a",
+    )
+
+    response = requests.post(
+        f"{base_url}/faceswaplab/swap_face",
+        data=face_swap_request.json(),
+        headers={"Content-Type": "application/json; charset=utf-8"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "images" in data
+    assert "infos" in data
