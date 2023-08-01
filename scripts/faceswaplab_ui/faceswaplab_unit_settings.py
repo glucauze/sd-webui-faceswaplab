@@ -8,7 +8,7 @@ from insightface.app.common import Face
 from PIL import Image
 from scripts.faceswaplab_utils.imgutils import pil_to_cv2
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
-from scripts.faceswaplab_utils import face_utils
+from scripts.faceswaplab_utils import face_checkpoints_utils
 from scripts.faceswaplab_inpainting.faceswaplab_inpainting import InpaintingOptions
 from client_api import api_utils
 
@@ -118,14 +118,13 @@ class FaceSwapUnitSettings:
         """
         if not hasattr(self, "_reference_face"):
             if self.source_face and self.source_face != "None":
-                with open(self.source_face, "rb") as file:
-                    try:
-                        logger.info(f"loading face {file.name}")
-                        face = face_utils.load_face(file.name)
-                        self._reference_face = face
-                    except Exception as e:
-                        logger.error("Failed to load checkpoint  : %s", e)
-                        raise e
+                try:
+                    logger.info(f"loading face {self.source_face}")
+                    face = face_checkpoints_utils.load_face(self.source_face)
+                    self._reference_face = face
+                except Exception as e:
+                    logger.error("Failed to load checkpoint  : %s", e)
+                    raise e
             elif self.source_img is not None:
                 if isinstance(self.source_img, str):  # source_img is a base64 string
                     if (

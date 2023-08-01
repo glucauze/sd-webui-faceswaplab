@@ -1,6 +1,6 @@
 from typing import List
 from scripts.faceswaplab_ui.faceswaplab_inpainting_ui import face_inpainting_ui
-from scripts.faceswaplab_utils.face_utils import get_face_checkpoints
+from scripts.faceswaplab_utils.face_checkpoints_utils import get_face_checkpoints
 import gradio as gr
 
 

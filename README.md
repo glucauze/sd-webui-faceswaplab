@@ -20,6 +20,10 @@ In short:
 
 More on this here : https://glucauze.github.io/sd-webui-faceswaplab/ 
 
+### Known problems (wontfix):
+
++ Older versions of gradio don't work well with the extension. See this bug : https://github.com/glucauze/sd-webui-faceswaplab/issues/5
+
 ### Features
 
 + **Face Unit Concept**: Similar to controlNet, the program introduces the concept of a face unit. You can configure up to 10 units (3 units are the default setting) in the program settings (sd).

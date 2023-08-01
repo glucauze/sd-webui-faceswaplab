@@ -11,6 +11,7 @@ from modules import processing
 import base64
 from collections import Counter
 from scripts.faceswaplab_utils.typing import BoxCoords, CV2ImgU8, PILImage
+from scripts.faceswaplab_utils.faceswaplab_logging import logger
 
 
 def check_against_nsfw(img: PILImage) -> bool:
@@ -157,19 +158,6 @@ def create_square_image(image_list: List[PILImage]) -> Optional[PILImage]:
     return None
 
 
-# def create_mask(image : PILImage, box_coords : Tuple[int, int, int, int]) -> PILImage:
-#     width, height = image.size
-#     mask = Image.new("L", (width, height), 255)
-#     x1, y1, x2, y2 = box_coords
-#     for x in range(width):
-#         for y in range(height):
-#             if x1 <= x <= x2 and y1 <= y <= y2:
-#                 mask.putpixel((x, y), 255)
-#             else:
-#                 mask.putpixel((x, y), 0)
-#     return mask
-
-
 def create_mask(
     image: PILImage,
     box_coords: BoxCoords,
@@ -216,7 +204,9 @@ def apply_mask(
             if overlays is None or batch_index >= len(overlays):
                 return img
             overlay: PILImage = overlays[batch_index]
-            overlay = overlay.resize((img.size), resample=Image.Resampling.LANCZOS)
+            logger.debug("Overlay size %s, Image size %s", overlay.size, img.size)
+            if overlay.size != img.size:
+                overlay = overlay.resize((img.size), resample=Image.Resampling.LANCZOS)
             img = img.copy()
             img.paste(overlay, (0, 0), overlay)
             return img

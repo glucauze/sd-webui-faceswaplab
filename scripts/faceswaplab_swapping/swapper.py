@@ -27,7 +27,6 @@ from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,
 )
 from scripts.faceswaplab_utils.models_utils import get_current_model
-import gradio as gr
 from scripts.faceswaplab_utils.typing import CV2ImgU8, PILImage, Face
 from scripts.faceswaplab_inpainting.i2i_pp import img2img_diffusion
 
@@ -250,6 +249,21 @@ def getAnalysisModel() -> insightface.app.FaceAnalysis:
         raise FaceModelException("Loading of analysis model failed")
 
 
+import hashlib
+
+
+def is_sha1_matching(file_path: str, expected_sha1: str) -> bool:
+    sha1_hash = hashlib.sha1()
+
+    with open(file_path, "rb") as file:
+        for byte_block in iter(lambda: file.read(4096), b""):
+            sha1_hash.update(byte_block)
+        if sha1_hash.hexdigest() == expected_sha1:
+            return True
+        else:
+            return False
+
+
 @lru_cache(maxsize=1)
 def getFaceSwapModel(model_path: str) -> upscaled_inswapper.UpscaledINSwapper:
     """
@@ -262,6 +276,14 @@ def getFaceSwapModel(model_path: str) -> upscaled_inswapper.UpscaledINSwapper:
         insightface.model_zoo.FaceModel: The face swap model.
     """
     try:
+        expected_sha1 = "17a64851eaefd55ea597ee41e5c18409754244c5"
+        if not is_sha1_matching(model_path, expected_sha1):
+            logger.error(
+                "Suspicious sha1 for model %s, check the model is valid or has been downloaded adequately. Should be %s",
+                model_path,
+                expected_sha1,
+            )
+
         # Initializes the face swap model using the specified model path.
         return upscaled_inswapper.UpscaledINSwapper(
             insightface.model_zoo.get_model(model_path, providers=providers)
@@ -270,6 +292,9 @@ def getFaceSwapModel(model_path: str) -> upscaled_inswapper.UpscaledINSwapper:
         logger.error(
             "Loading of swapping model failed, please check the requirements (On Windows, download and install Visual Studio. During the install, make sure to include the Python and C++ packages.)"
         )
+        import traceback
+
+        traceback.print_exc()
         raise FaceModelException("Loading of swapping model failed")
 
 
@@ -315,11 +340,15 @@ def get_faces(
         return []
 
 
+@dataclass
+class FaceFilteringOptions:
+    faces_index: Set[int]
+    source_gender: Optional[int] = None  # if none will not use same gender
+    sort_by_face_size: bool = False
+
+
 def filter_faces(
-    all_faces: List[Face],
-    faces_index: Set[int],
-    source_gender: int = None,
-    sort_by_face_size: bool = False,
+    all_faces: List[Face], filtering_options: FaceFilteringOptions
 ) -> List[Face]:
     """
     Sorts and filters a list of faces based on specified criteria.
@@ -337,18 +366,24 @@ def filter_faces(
     :return: A list of Face objects sorted and filtered according to the specified criteria.
     """
     filtered_faces = copy.copy(all_faces)
-    if sort_by_face_size:
+    if filtering_options.sort_by_face_size:
         filtered_faces = sorted(
             all_faces,
             reverse=True,
             key=lambda x: (x.bbox[2] - x.bbox[0]) * (x.bbox[3] - x.bbox[1]),
         )
 
-    if source_gender is not None:
+    if filtering_options.source_gender is not None:
         filtered_faces = [
-            face for face in filtered_faces if face["gender"] == source_gender
+            face
+            for face in filtered_faces
+            if face["gender"] == filtering_options.source_gender
         ]
-    return [face for i, face in enumerate(filtered_faces) if i in faces_index]
+    return [
+        face
+        for i, face in enumerate(filtered_faces)
+        if i in filtering_options.faces_index
+    ]
 
 
 @dataclass
@@ -391,7 +426,7 @@ def get_or_default(l: List[Any], index: int, default: Any) -> Any:
     return l[index] if index < len(l) else default
 
 
-def get_faces_from_img_files(files: List[gr.File]) -> List[Optional[CV2ImgU8]]:
+def get_faces_from_img_files(files: List[str]) -> List[Optional[CV2ImgU8]]:
     """
     Extracts faces from a list of image files.
 
@@ -407,7 +442,7 @@ def get_faces_from_img_files(files: List[gr.File]) -> List[Optional[CV2ImgU8]]:
 
     if len(files) > 0:
         for file in files:
-            img = Image.open(file.name)  # Open the image file
+            img = Image.open(file)  # Open the image file
             face = get_or_default(
                 get_faces(pil_to_cv2(img)), 0, None
             )  # Extract faces from the image
@@ -503,39 +538,42 @@ def swap_face(
             result_image = Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
             return_result.image = result_image
 
-            # FIXME : recompute similarity
-
-            # if compute_similarity:
-            #     try:
-            #         result_faces = get_faces(
-            #             cv2.cvtColor(np.array(result_image), cv2.COLOR_RGB2BGR),
-            #             sort_by_face_size=sort_by_face_size,
-            #         )
-            #         if same_gender:
-            #             result_faces = [
-            #                 x for x in result_faces if x["gender"] == gender
-            #             ]
-
-            #         for i, swapped_face in enumerate(result_faces):
-            #             logger.info(f"compare face {i}")
-            #             if i in faces_index and i < len(target_faces):
-            #                 return_result.similarity[i] = cosine_similarity_face(
-            #                     source_face, swapped_face
-            #                 )
-            #                 return_result.ref_similarity[i] = cosine_similarity_face(
-            #                     reference_face, swapped_face
-            #                 )
-
-            #             logger.info(f"similarity {return_result.similarity}")
-            #             logger.info(f"ref similarity {return_result.ref_similarity}")
-
-            # except Exception as e:
-            #     logger.error("Similarity processing failed %s", e)
-            #     raise e
     except Exception as e:
         logger.error("Conversion failed %s", e)
         raise e
     return return_result
+
+
+def compute_similarity(
+    reference_face: Face,
+    source_face: Face,
+    swapped_image: PILImage,
+    filtering: FaceFilteringOptions,
+) -> Tuple[Dict[int, float], Dict[int, float]]:
+    similarity: Dict[int, float] = {}
+    ref_similarity: Dict[int, float] = {}
+    try:
+        swapped_image_cv2: CV2ImgU8 = cv2.cvtColor(
+            np.array(swapped_image), cv2.COLOR_RGB2BGR
+        )
+        new_faces = filter_faces(get_faces(swapped_image_cv2), filtering)
+        if len(new_faces) == 0:
+            logger.error("compute_similarity : No faces to compare with !")
+            return None
+
+        for i, swapped_face in enumerate(new_faces):
+            logger.info(f"compare face {i}")
+            similarity[i] = cosine_similarity_face(source_face, swapped_face)
+            ref_similarity[i] = cosine_similarity_face(reference_face, swapped_face)
+
+            logger.info(f"similarity {similarity}")
+            logger.info(f"ref similarity {ref_similarity}")
+
+        return (similarity, ref_similarity)
+    except Exception as e:
+        logger.error("Similarity processing failed %s", e)
+        raise e
+    return None
 
 
 def process_image_unit(
@@ -580,12 +618,13 @@ def process_image_unit(
                 logger.info("Use source face as reference face")
                 reference_face = src_face
 
-            target_faces = filter_faces(
-                faces,
+            face_filtering_options = FaceFilteringOptions(
                 faces_index=unit.faces_index,
                 source_gender=src_face["gender"] if unit.same_gender else None,
                 sort_by_face_size=unit.sort_by_size,
             )
+
+            target_faces = filter_faces(faces, filtering_options=face_filtering_options)
 
             # Apply pre-inpainting to image
             if unit.pre_inpainting.inpainting_denoising_strengh > 0:
@@ -610,6 +649,18 @@ def process_image_unit(
                 )
 
             save_img_debug(result.image, "After swap")
+
+            if unit.compute_similarity:
+                similarities = compute_similarity(
+                    reference_face=reference_face,
+                    source_face=src_face,
+                    swapped_image=result.image,
+                    filtering=face_filtering_options,
+                )
+                if similarities:
+                    (result.similarity, result.ref_similarity) = similarities
+                else:
+                    logger.error("Failed to compute similarity")
 
             if result.image is None:
                 logger.error("Result image is None")
