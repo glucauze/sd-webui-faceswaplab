@@ -6,6 +6,7 @@ from typing import List, Optional, Set, Union
 import gradio as gr
 from insightface.app.common import Face
 from PIL import Image
+from scripts.faceswaplab_swapping.upcaled_inswapper_options import InswappperOptions
 from scripts.faceswaplab_utils.imgutils import pil_to_cv2
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
 from scripts.faceswaplab_utils import face_checkpoints_utils
@@ -51,6 +52,8 @@ class FaceSwapUnitSettings:
     swap_in_generated: bool
     # Pre inpainting configuration (Don't use optional for this or gradio parsing will fail) :
     pre_inpainting: InpaintingOptions
+    # Configure swapping options
+    swapping_options: InswappperOptions
     # Post inpainting configuration (Don't use optional for this or gradio parsing will fail) :
     post_inpainting: InpaintingOptions
 
@@ -81,6 +84,7 @@ class FaceSwapUnitSettings:
             swap_in_generated=True,
             swap_in_source=False,
             pre_inpainting=InpaintingOptions.from_api_dto(dto.pre_inpainting),
+            swapping_options=InswappperOptions.from_api_dto(dto.swapping_options),
             post_inpainting=InpaintingOptions.from_api_dto(dto.post_inpainting),
         )
 

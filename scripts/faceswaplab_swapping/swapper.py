@@ -1,8 +1,14 @@
 import copy
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, List, Set, Tuple, Optional
+from pprint import pformat
+from typing import Any, Dict, Generator, List, Set, Tuple, Optional
 import tempfile
+from tqdm import tqdm
+import sys
+from io import StringIO
+from contextlib import contextmanager
+import hashlib
 
 import cv2
 import insightface
@@ -13,6 +19,7 @@ from PIL import Image
 from sklearn.metrics.pairwise import cosine_similarity
 
 from scripts.faceswaplab_swapping import upscaled_inswapper
+from scripts.faceswaplab_swapping.upcaled_inswapper_options import InswappperOptions
 from scripts.faceswaplab_utils.imgutils import (
     pil_to_cv2,
     check_against_nsfw,
@@ -117,19 +124,16 @@ def batch_process(
             for src_image in src_images:
                 current_images = []
                 swapped_images = process_images_units(
-                    get_current_model(),
-                    images=[(src_image, None)],
-                    units=units,
-                    upscaled_swapper=opts.data.get(
-                        "faceswaplab_upscaled_swapper", False
-                    ),
+                    get_current_model(), images=[(src_image, None)], units=units
                 )
                 if len(swapped_images) > 0:
                     current_images += [img for img, _ in swapped_images]
 
                 logger.info("%s images generated", len(current_images))
-                for i, img in enumerate(current_images):
-                    current_images[i] = enhance_image(img, postprocess_options)
+
+                if postprocess_options:
+                    for i, img in enumerate(current_images):
+                        current_images[i] = enhance_image(img, postprocess_options)
 
                 if save_path:
                     for img in current_images:
@@ -225,6 +229,33 @@ class FaceModelException(Exception):
         super().__init__(self.message)
 
 
+@contextmanager
+def capture_stdout() -> Generator[StringIO, None, None]:
+    """
+    Capture and yield the printed messages to stdout.
+
+    This context manager temporarily replaces sys.stdout with a StringIO object,
+    capturing all printed output. After the context block is exited, sys.stdout
+    is restored to its original value.
+
+    Example usage:
+    with capture_stdout() as captured:
+        print("Hello, World!")
+        output = captured.getvalue()
+        # output now contains "Hello, World!\n"
+
+    Returns:
+        A StringIO object containing the captured output.
+    """
+    original_stdout = sys.stdout  # Type: ignore
+    captured_stdout = StringIO()
+    sys.stdout = captured_stdout  # Type: ignore
+    try:
+        yield captured_stdout
+    finally:
+        sys.stdout = original_stdout  # Type: ignore
+
+
 @lru_cache(maxsize=1)
 def getAnalysisModel() -> insightface.app.FaceAnalysis:
     """
@@ -237,11 +268,20 @@ def getAnalysisModel() -> insightface.app.FaceAnalysis:
         if not os.path.exists(faceswaplab_globals.ANALYZER_DIR):
             os.makedirs(faceswaplab_globals.ANALYZER_DIR)
 
-        logger.info("Load analysis model, will take some time.")
+        logger.info("Load analysis model, will take some time. (> 30s)")
         # Initialize the analysis model with the specified name and providers
-        return insightface.app.FaceAnalysis(
-            name="buffalo_l", providers=providers, root=faceswaplab_globals.ANALYZER_DIR
-        )
+
+        with tqdm(total=1, desc="Loading analysis model", unit="model") as pbar:
+            with capture_stdout() as captured:
+                model = insightface.app.FaceAnalysis(
+                    name="buffalo_l",
+                    providers=providers,
+                    root=faceswaplab_globals.ANALYZER_DIR,
+                )
+            pbar.update(1)
+        logger.info("%s", pformat(captured.getvalue()))
+
+        return model
     except Exception as e:
         logger.error(
             "Loading of swapping model failed, please check the requirements (On Windows, download and install Visual Studio. During the install, make sure to include the Python and C++ packages.)"
@@ -249,11 +289,8 @@ def getAnalysisModel() -> insightface.app.FaceAnalysis:
         raise FaceModelException("Loading of analysis model failed")
 
 
-import hashlib
-
-
 def is_sha1_matching(file_path: str, expected_sha1: str) -> bool:
-    sha1_hash = hashlib.sha1()
+    sha1_hash = hashlib.sha1(usedforsecurity=False)
 
     with open(file_path, "rb") as file:
         for byte_block in iter(lambda: file.read(4096), b""):
@@ -284,10 +321,15 @@ def getFaceSwapModel(model_path: str) -> upscaled_inswapper.UpscaledINSwapper:
                 expected_sha1,
             )
 
-        # Initializes the face swap model using the specified model path.
-        return upscaled_inswapper.UpscaledINSwapper(
-            insightface.model_zoo.get_model(model_path, providers=providers)
-        )
+        with tqdm(total=1, desc="Loading swap model", unit="model") as pbar:
+            with capture_stdout() as captured:
+                model = upscaled_inswapper.UpscaledINSwapper(
+                    insightface.model_zoo.get_model(model_path, providers=providers)
+                )
+            pbar.update(1)
+        logger.info("%s", pformat(captured.getvalue()))
+        return model
+
     except Exception as e:
         logger.error(
             "Loading of swapping model failed, please check the requirements (On Windows, download and install Visual Studio. During the install, make sure to include the Python and C++ packages.)"
@@ -498,7 +540,7 @@ def swap_face(
     target_img: PILImage,
     target_faces: List[Face],
     model: str,
-    upscaled_swapper: bool = False,
+    swapping_options: Optional[InswappperOptions],
     compute_similarity: bool = True,
 ) -> ImageResult:
     """
@@ -532,7 +574,7 @@ def swap_face(
                     img=result,
                     target_face=swapped_face,
                     source_face=source_face,
-                    upscale=upscaled_swapper,
+                    options=swapping_options,
                 )  # type: ignore
 
             result_image = Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
@@ -581,7 +623,6 @@ def process_image_unit(
     unit: FaceSwapUnitSettings,
     image: PILImage,
     info: str = None,
-    upscaled_swapper: bool = False,
     force_blend: bool = False,
 ) -> List[Tuple[PILImage, str]]:
     """Process one image and return a List of (image, info) (one if blended, many if not).
@@ -639,7 +680,7 @@ def process_image_unit(
                 target_img=current_image,
                 target_faces=target_faces,
                 model=model,
-                upscaled_swapper=upscaled_swapper,
+                swapping_options=unit.swapping_options,
                 compute_similarity=unit.compute_similarity,
             )
             # Apply post-inpainting to image
@@ -694,7 +735,6 @@ def process_images_units(
     model: str,
     units: List[FaceSwapUnitSettings],
     images: List[Tuple[Optional[PILImage], Optional[str]]],
-    upscaled_swapper: bool = False,
     force_blend: bool = False,
 ) -> Optional[List[Tuple[PILImage, str]]]:
     """
@@ -725,13 +765,9 @@ def process_images_units(
     processed_images = []
     for i, (image, info) in enumerate(images):
         logger.debug("Processing image %s", i)
-        swapped = process_image_unit(
-            model, units[0], image, info, upscaled_swapper, force_blend
-        )
+        swapped = process_image_unit(model, units[0], image, info, force_blend)
         logger.debug("Image %s -> %s images", i, len(swapped))
-        nexts = process_images_units(
-            model, units[1:], swapped, upscaled_swapper, force_blend
-        )
+        nexts = process_images_units(model, units[1:], swapped, force_blend)
         if nexts:
             processed_images.extend(nexts)
         else:

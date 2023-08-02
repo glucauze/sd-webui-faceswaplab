@@ -1,10 +1,10 @@
 cython
+dill
 ifnude
 insightface==0.7.3
 onnx==1.14.0
 onnxruntime==1.15.1
-opencv-python==4.7.0.72
+opencv-python
 pandas
-pydantic==1.10.9
-dill==0.3.6
+pydantic
 safetensors

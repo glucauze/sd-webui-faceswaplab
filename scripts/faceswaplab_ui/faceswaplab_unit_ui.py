@@ -2,6 +2,100 @@ from typing import List
 from scripts.faceswaplab_ui.faceswaplab_inpainting_ui import face_inpainting_ui
 from scripts.faceswaplab_utils.face_checkpoints_utils import get_face_checkpoints
 import gradio as gr
+from modules.shared import opts
+from modules import shared
+
+
+def faceswap_unit_advanced_options(
+    is_img2img: bool, unit_num: int = 1, id_prefix: str = "faceswaplab_"
+) -> List[gr.components.Component]:
+    with gr.Accordion(f"Post-Processing & Advanced Mask Options", open=False):
+        gr.Markdown("""Post-processing and mask settings for unit faces""")
+        with gr.Row():
+            face_restorer_name = gr.Radio(
+                label="Restore Face",
+                choices=["None"] + [x.name() for x in shared.face_restorers],
+                value=lambda: opts.data.get(
+                    "faceswaplab_default_upscaled_swapper_face_restorer",
+                    "None",
+                ),
+                type="value",
+                elem_id=f"{id_prefix}_face{unit_num}_face_restorer",
+            )
+            with gr.Column():
+                face_restorer_visibility = gr.Slider(
+                    0,
+                    1,
+                    value=lambda: opts.data.get(
+                        "faceswaplab_default_upscaled_swapper_face_restorer_visibility",
+                        1.0,
+                    ),
+                    step=0.001,
+                    label="Restore visibility",
+                    elem_id=f"{id_prefix}_face{unit_num}_face_restorer_visibility",
+                )
+                codeformer_weight = gr.Slider(
+                    0,
+                    1,
+                    value=lambda: opts.data.get(
+                        "faceswaplab_default_upscaled_swapper_face_restorer_weight", 1.0
+                    ),
+                    step=0.001,
+                    label="codeformer weight",
+                    elem_id=f"{id_prefix}_face{unit_num}_face_restorer_weight",
+                )
+        upscaler_name = gr.Dropdown(
+            choices=[upscaler.name for upscaler in shared.sd_upscalers],
+            value=lambda: opts.data.get(
+                "faceswaplab_default_upscaled_swapper_upscaler", ""
+            ),
+            label="Upscaler",
+            elem_id=f"{id_prefix}_face{unit_num}_upscaler",
+        )
+
+        improved_mask = gr.Checkbox(
+            lambda: opts.data.get(
+                "faceswaplab_default_upscaled_swapper_improved_mask", False
+            ),
+            interactive=True,
+            label="Use improved segmented mask (use pastenet to mask only the face)",
+            elem_id=f"{id_prefix}_face{unit_num}_improved_mask",
+        )
+        color_corrections = gr.Checkbox(
+            lambda: opts.data.get(
+                "faceswaplab_default_upscaled_swapper_fixcolor", False
+            ),
+            interactive=True,
+            label="Use color corrections",
+            elem_id=f"{id_prefix}_face{unit_num}_color_corrections",
+        )
+        sharpen_face = gr.Checkbox(
+            lambda: opts.data.get(
+                "faceswaplab_default_upscaled_swapper_sharpen", False
+            ),
+            interactive=True,
+            label="sharpen face",
+            elem_id=f"{id_prefix}_face{unit_num}_sharpen_face",
+        )
+        erosion_factor = gr.Slider(
+            0.0,
+            10.0,
+            lambda: opts.data.get("faceswaplab_default_upscaled_swapper_erosion", 1.0),
+            step=0.01,
+            label="Upscaled swapper mask erosion factor, 1 = default behaviour.",
+            elem_id=f"{id_prefix}_face{unit_num}_erosion_factor",
+        )
+
+    return [
+        face_restorer_name,
+        face_restorer_visibility,
+        codeformer_weight,
+        upscaler_name,
+        improved_mask,
+        color_corrections,
+        sharpen_face,
+        erosion_factor,
+    ]
 
 
 def faceswap_unit_ui(
@@ -62,35 +156,6 @@ def faceswap_unit_ui(
                     elem_id=f"{id_prefix}_face{unit_num}_blend_faces",
                     interactive=True,
                 )
-            gr.Markdown("""Discard images with low similarity or no faces :""")
-            with gr.Row():
-                check_similarity = gr.Checkbox(
-                    False,
-                    placeholder="discard",
-                    label="Check similarity",
-                    elem_id=f"{id_prefix}_face{unit_num}_check_similarity",
-                )
-                compute_similarity = gr.Checkbox(
-                    False,
-                    label="Compute similarity",
-                    elem_id=f"{id_prefix}_face{unit_num}_compute_similarity",
-                )
-            min_sim = gr.Slider(
-                0,
-                1,
-                0,
-                step=0.01,
-                label="Min similarity",
-                elem_id=f"{id_prefix}_face{unit_num}_min_similarity",
-            )
-            min_ref_sim = gr.Slider(
-                0,
-                1,
-                0,
-                step=0.01,
-                label="Min reference similarity",
-                elem_id=f"{id_prefix}_face{unit_num}_min_ref_similarity",
-            )
 
             gr.Markdown(
                 """Select the face to be swapped, you can sort by size or use the same gender as the desired face:"""
@@ -143,11 +208,46 @@ def faceswap_unit_ui(
                 visible=is_img2img,
                 elem_id=f"{id_prefix}_face{unit_num}_swap_in_generated",
             )
+
+        with gr.Accordion("Similarity", open=False):
+            gr.Markdown("""Discard images with low similarity or no faces :""")
+            with gr.Row():
+                check_similarity = gr.Checkbox(
+                    False,
+                    placeholder="discard",
+                    label="Check similarity",
+                    elem_id=f"{id_prefix}_face{unit_num}_check_similarity",
+                )
+                compute_similarity = gr.Checkbox(
+                    False,
+                    label="Compute similarity",
+                    elem_id=f"{id_prefix}_face{unit_num}_compute_similarity",
+                )
+            min_sim = gr.Slider(
+                0,
+                1,
+                0,
+                step=0.01,
+                label="Min similarity",
+                elem_id=f"{id_prefix}_face{unit_num}_min_similarity",
+            )
+            min_ref_sim = gr.Slider(
+                0,
+                1,
+                0,
+                step=0.01,
+                label="Min reference similarity",
+                elem_id=f"{id_prefix}_face{unit_num}_min_ref_similarity",
+            )
+
         pre_inpainting = face_inpainting_ui(
             name="Pre-Inpainting (Before swapping)",
             id_prefix=f"{id_prefix}_face{unit_num}_preinpainting",
             description="Pre-inpainting sends face to inpainting before swapping",
         )
+
+        options = faceswap_unit_advanced_options(is_img2img, unit_num, id_prefix)
+
         post_inpainting = face_inpainting_ui(
             name="Post-Inpainting (After swapping)",
             id_prefix=f"{id_prefix}_face{unit_num}_postinpainting",
@@ -173,6 +273,7 @@ def faceswap_unit_ui(
             swap_in_generated,
         ]
         + pre_inpainting
+        + options
         + post_inpainting
     )
 

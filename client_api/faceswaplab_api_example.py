@@ -1,6 +1,7 @@
 import requests
 from api_utils import (
     FaceSwapUnit,
+    InswappperOptions,
     pil_to_base64,
     PostProcessingOptions,
     InpaintingWhen,
@@ -10,6 +11,7 @@ from api_utils import (
     FaceSwapExtractRequest,
     FaceSwapCompareRequest,
     FaceSwapExtractResponse,
+    safetensors_to_base64,
 )
 
 address = "http://127.0.0.1:7860"
@@ -91,6 +93,37 @@ result = requests.post(
     headers={"Content-Type": "application/json; charset=utf-8"},
 )
 response = FaceSwapExtractResponse.parse_obj(result.json())
+
+for img in response.pil_images:
+    img.show()
+
+
+#############################
+# FaceSwap with local safetensors
+
+# First face unit :
+unit1 = FaceSwapUnit(
+    source_face=safetensors_to_base64("test.safetensors"),
+    faces_index=(0,),  # Replace first face
+    swapping_options=InswappperOptions(
+        face_restorer_name="CodeFormer",
+        upscaler_name="LDSR",
+        improved_mask=True,
+        sharpen=True,
+        color_corrections=True,
+    ),
+)
+
+# Prepare the request
+request = FaceSwapRequest(image=pil_to_base64("test_image.png"), units=[unit1])
+
+# Face Swap
+result = requests.post(
+    url=f"{address}/faceswaplab/swap_face",
+    data=request.json(),
+    headers={"Content-Type": "application/json; charset=utf-8"},
+)
+response = FaceSwapResponse.parse_obj(result.json())
 
 for img in response.pil_images:
     img.show()

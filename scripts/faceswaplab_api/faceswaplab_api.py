@@ -91,6 +91,8 @@ def faceswaplab_api(_: gr.Blocks, app: FastAPI) -> None:
         if src_image is not None:
             if request.postprocessing:
                 pp_options = PostProcessingOptions.from_api_dto(request.postprocessing)
+            else:
+                pp_options = None
             units = get_faceswap_units_settings(request.units)
 
             swapped_images = swapper.batch_process(

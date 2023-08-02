@@ -7,21 +7,19 @@ import torch
 
 import modules.scripts as scripts
 from modules import scripts
+from scripts.faceswaplab_swapping.upcaled_inswapper_options import InswappperOptions
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
 from scripts.faceswaplab_utils.typing import *
 from scripts.faceswaplab_utils import imgutils
-from scripts.faceswaplab_postprocessing.postprocessing import enhance_image
-from scripts.faceswaplab_postprocessing.postprocessing_options import (
-    PostProcessingOptions,
-)
 from scripts.faceswaplab_utils.models_utils import get_models
-from modules.shared import opts
 import traceback
 
 import dill as pickle  # will be removed in future versions
 from scripts.faceswaplab_swapping import swapper
 from pprint import pformat
 import re
+from client_api import api_utils
+import tempfile
 
 
 def sanitize_name(name: str) -> str:
@@ -93,16 +91,9 @@ def build_face_checkpoint_and_save(
                     source_face=blended_face,
                     target_img=reference_preview_img,
                     model=get_models()[0],
-                    upscaled_swapper=opts.data.get(
-                        "faceswaplab_upscaled_swapper", False
-                    ),
+                    swapping_options=InswappperOptions(face_restorer_name="Codeformer"),
                 )
-                preview_image = enhance_image(
-                    result.image,
-                    PostProcessingOptions(
-                        face_restorer_name="CodeFormer", restorer_visibility=1
-                    ),
-                )
+                preview_image = result.image
 
             file_path = os.path.join(get_checkpoint_path(), f"{name}.safetensors")
             if not overwrite:
@@ -147,6 +138,16 @@ def save_face(face: Face, filename: str) -> None:
 
 
 def load_face(name: str) -> Face:
+    if name.startswith("data:application/face;base64,"):
+        with tempfile.NamedTemporaryFile(delete=True) as temp_file:
+            api_utils.base64_to_safetensors(name, temp_file.name)
+            face = {}
+            with safe_open(temp_file.name, framework="pt", device="cpu") as f:
+                for k in f.keys():
+                    logger.debug("load key %s", k)
+                    face[k] = f.get_tensor(k).numpy()
+            return Face(face)
+
     filename = matching_checkpoint(name)
     if filename is None:
         return None

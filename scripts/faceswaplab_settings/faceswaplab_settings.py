@@ -54,7 +54,7 @@ def on_ui_settings() -> None:
         "faceswaplab_pp_default_face_restorer",
         shared.OptionInfo(
             None,
-            "UI Default post processing face restorer (requires restart)",
+            "UI Default global post processing face restorer (requires restart)",
             gr.Dropdown,
             {
                 "interactive": True,
@@ -67,7 +67,7 @@ def on_ui_settings() -> None:
         "faceswaplab_pp_default_face_restorer_visibility",
         shared.OptionInfo(
             1,
-            "UI Default post processing face restorer visibility (requires restart)",
+            "UI Default global  post processing face restorer visibility (requires restart)",
             gr.Slider,
             {"minimum": 0, "maximum": 1, "step": 0.001},
             section=section,
@@ -77,7 +77,7 @@ def on_ui_settings() -> None:
         "faceswaplab_pp_default_face_restorer_weight",
         shared.OptionInfo(
             1,
-            "UI Default post processing face restorer weight (requires restart)",
+            "UI Default global post processing face restorer weight (requires restart)",
             gr.Slider,
             {"minimum": 0, "maximum": 1, "step": 0.001},
             section=section,
@@ -87,7 +87,7 @@ def on_ui_settings() -> None:
         "faceswaplab_pp_default_upscaler",
         shared.OptionInfo(
             None,
-            "UI Default post processing upscaler (requires restart)",
+            "UI Default global post processing upscaler (requires restart)",
             gr.Dropdown,
             {
                 "interactive": True,
@@ -100,12 +100,14 @@ def on_ui_settings() -> None:
         "faceswaplab_pp_default_upscaler_visibility",
         shared.OptionInfo(
             1,
-            "UI Default post processing upscaler visibility(requires restart)",
+            "UI Default global post processing upscaler visibility(requires restart)",
             gr.Slider,
             {"minimum": 0, "maximum": 1, "step": 0.001},
             section=section,
         ),
     )
+
+    # Inpainting
 
     shared.opts.add_option(
         "faceswaplab_pp_default_inpainting_prompt",
@@ -132,20 +134,10 @@ def on_ui_settings() -> None:
     # UPSCALED SWAPPER
 
     shared.opts.add_option(
-        "faceswaplab_upscaled_swapper",
-        shared.OptionInfo(
-            False,
-            "Upscaled swapper. Applied only to the swapped faces. Apply transformations before merging with the original image.",
-            gr.Checkbox,
-            {"interactive": True},
-            section=section,
-        ),
-    )
-    shared.opts.add_option(
-        "faceswaplab_upscaled_swapper_upscaler",
+        "faceswaplab_default_upscaled_swapper_upscaler",
         shared.OptionInfo(
             None,
-            "Upscaled swapper upscaler (Recommanded : LDSR but slow)",
+            "Default Upscaled swapper upscaler (Recommanded : LDSR but slow) (requires restart)",
             gr.Dropdown,
             {
                 "interactive": True,
@@ -155,40 +147,40 @@ def on_ui_settings() -> None:
         ),
     )
     shared.opts.add_option(
-        "faceswaplab_upscaled_swapper_sharpen",
+        "faceswaplab_default_upscaled_swapper_sharpen",
         shared.OptionInfo(
             False,
-            "Upscaled swapper sharpen",
+            "Default Upscaled swapper sharpen",
             gr.Checkbox,
             {"interactive": True},
             section=section,
         ),
     )
     shared.opts.add_option(
-        "faceswaplab_upscaled_swapper_fixcolor",
+        "faceswaplab_default_upscaled_swapper_fixcolor",
         shared.OptionInfo(
             False,
-            "Upscaled swapper color correction",
+            "Default Upscaled swapper color corrections (requires restart)",
             gr.Checkbox,
             {"interactive": True},
             section=section,
         ),
     )
     shared.opts.add_option(
-        "faceswaplab_upscaled_improved_mask",
+        "faceswaplab_default_upscaled_swapper_improved_mask",
         shared.OptionInfo(
             True,
-            "Use improved segmented mask (use pastenet to mask only the face)",
+            "Default Use improved segmented mask (use pastenet to mask only the face) (requires restart)",
             gr.Checkbox,
             {"interactive": True},
             section=section,
         ),
     )
     shared.opts.add_option(
-        "faceswaplab_upscaled_swapper_face_restorer",
+        "faceswaplab_default_upscaled_swapper_face_restorer",
         shared.OptionInfo(
             None,
-            "Upscaled swapper face restorer",
+            "Default Upscaled swapper face restorer (requires restart)",
             gr.Dropdown,
             {
                 "interactive": True,
@@ -198,40 +190,30 @@ def on_ui_settings() -> None:
         ),
     )
     shared.opts.add_option(
-        "faceswaplab_upscaled_swapper_face_restorer_visibility",
+        "faceswaplab_default_upscaled_swapper_face_restorer_visibility",
         shared.OptionInfo(
             1,
-            "Upscaled swapper face restorer visibility",
+            "Default Upscaled swapper face restorer visibility (requires restart)",
             gr.Slider,
             {"minimum": 0, "maximum": 1, "step": 0.001},
             section=section,
         ),
     )
     shared.opts.add_option(
-        "faceswaplab_upscaled_swapper_face_restorer_weight",
+        "faceswaplab_default_upscaled_swapper_face_restorer_weight",
         shared.OptionInfo(
             1,
-            "Upscaled swapper face restorer weight (codeformer)",
+            "Default Upscaled swapper face restorer weight (codeformer) (requires restart)",
             gr.Slider,
             {"minimum": 0, "maximum": 1, "step": 0.001},
             section=section,
         ),
     )
     shared.opts.add_option(
-        "faceswaplab_upscaled_swapper_fthresh",
-        shared.OptionInfo(
-            10,
-            "Upscaled swapper fthresh (diff sensitivity) 10 = default behaviour. Low impact.",
-            gr.Slider,
-            {"minimum": 5, "maximum": 250, "step": 1},
-            section=section,
-        ),
-    )
-    shared.opts.add_option(
-        "faceswaplab_upscaled_swapper_erosion",
+        "faceswaplab_default_upscaled_swapper_erosion",
         shared.OptionInfo(
             1,
-            "Upscaled swapper mask erosion factor, 1 = default behaviour. The larger it is, the more blur is applied around the face. Too large and the facial change is no longer visible.",
+            "Default Upscaled swapper mask erosion factor, 1 = default behaviour. The larger it is, the more blur is applied around the face. Too large and the facial change is no longer visible. (requires restart)",
             gr.Slider,
             {"minimum": 0, "maximum": 10, "step": 0.001},
             section=section,

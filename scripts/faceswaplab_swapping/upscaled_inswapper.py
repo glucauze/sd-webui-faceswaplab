@@ -12,8 +12,10 @@ from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,
 )
 from scripts.faceswaplab_swapping.facemask import generate_face_mask
+from scripts.faceswaplab_swapping.upcaled_inswapper_options import InswappperOptions
 from scripts.faceswaplab_utils.imgutils import cv2_to_pil, pil_to_cv2
 from scripts.faceswaplab_utils.typing import CV2ImgU8, Face
+from scripts.faceswaplab_utils.faceswaplab_logging import logger
 
 
 def get_upscaler() -> UpscalerData:
@@ -127,26 +129,25 @@ class UpscaledINSwapper(INSwapper):
     def __init__(self, inswapper: INSwapper):
         self.__dict__.update(inswapper.__dict__)
 
-    def super_resolution(self, img: CV2ImgU8, k: int = 2) -> CV2ImgU8:
+    def upscale_and_restore(
+        self, img: CV2ImgU8, k: int = 2, inswapper_options: InswappperOptions = None
+    ) -> CV2ImgU8:
         pil_img = cv2_to_pil(img)
-        options = PostProcessingOptions(
-            upscaler_name=opts.data.get(
-                "faceswaplab_upscaled_swapper_upscaler", "LDSR"
-            ),
+        pp_options = PostProcessingOptions(
+            upscaler_name=inswapper_options.upscaler_name,
             upscale_visibility=1,
             scale=k,
-            face_restorer_name=opts.data.get(
-                "faceswaplab_upscaled_swapper_face_restorer", ""
-            ),
-            codeformer_weight=opts.data.get(
-                "faceswaplab_upscaled_swapper_face_restorer_weight", 1
-            ),
-            restorer_visibility=opts.data.get(
-                "faceswaplab_upscaled_swapper_face_restorer_visibility", 1
-            ),
+            face_restorer_name=inswapper_options.face_restorer_name,
+            codeformer_weight=inswapper_options.codeformer_weight,
+            restorer_visibility=inswapper_options.restorer_visibility,
         )
-        upscaled = upscaling.upscale_img(pil_img, options)
-        upscaled = upscaling.restore_face(upscaled, options)
+
+        upscaled = pil_img
+        if pp_options.upscaler_name:
+            upscaled = upscaling.upscale_img(pil_img, pp_options)
+        if pp_options.face_restorer_name:
+            upscaled = upscaling.restore_face(upscaled, pp_options)
+
         return pil_to_cv2(upscaled)
 
     def get(
@@ -155,7 +156,7 @@ class UpscaledINSwapper(INSwapper):
         target_face: Face,
         source_face: Face,
         paste_back: bool = True,
-        upscale: bool = True,
+        options: InswappperOptions = None,
     ) -> Union[CV2ImgU8, Tuple[CV2ImgU8, Any]]:
         aimg, M = face_align.norm_crop2(img, target_face.kps, self.input_size[0])
         blob = cv2.dnn.blobFromImage(
@@ -190,42 +191,47 @@ class UpscaledINSwapper(INSwapper):
                     fake_diff[:, -2:] = 0
                     return fake_diff
 
-                if upscale:
-                    print("*" * 80)
-                    print(
-                        f"Upscaled inswapper using {opts.data.get('faceswaplab_upscaled_swapper_upscaler', 'LDSR')}"
-                    )
-                    print("*" * 80)
+                if options:
+                    logger.info("*" * 80)
+                    logger.info(f"Upscaled inswapper")
 
-                    k = 4
-                    aimg, M = face_align.norm_crop2(
-                        img, target_face.kps, self.input_size[0] * k
-                    )
+                    if options.upscaler_name:
+                        # Upscale original image
+                        k = 4
+                        aimg, M = face_align.norm_crop2(
+                            img, target_face.kps, self.input_size[0] * k
+                        )
+                    else:
+                        k = 1
 
                     # upscale and restore face :
-                    bgr_fake = self.super_resolution(bgr_fake, k)
+                    bgr_fake = self.upscale_and_restore(
+                        bgr_fake, inswapper_options=options, k=k
+                    )
 
-                    if opts.data.get("faceswaplab_upscaled_improved_mask", True):
+                    if options.improved_mask:
                         mask = get_face_mask(aimg, bgr_fake)
                         bgr_fake = merge_images_with_mask(aimg, bgr_fake, mask)
 
                     # compute fake_diff before sharpen and color correction (better result)
                     fake_diff = compute_diff(bgr_fake, aimg)
 
-                    if opts.data.get("faceswaplab_upscaled_swapper_sharpen", True):
-                        print("sharpen")
+                    if options.sharpen:
+                        logger.info("sharpen")
                         # Add sharpness
                         blurred = cv2.GaussianBlur(bgr_fake, (0, 0), 3)
                         bgr_fake = cv2.addWeighted(bgr_fake, 1.5, blurred, -0.5, 0)
 
                     # Apply color corrections
-                    if opts.data.get("faceswaplab_upscaled_swapper_fixcolor", True):
-                        print("color correction")
+                    if options.color_corrections:
+                        logger.info("color correction")
                         correction = processing.setup_color_correction(cv2_to_pil(aimg))
                         bgr_fake_pil = processing.apply_color_correction(
                             correction, cv2_to_pil(bgr_fake)
                         )
                         bgr_fake = pil_to_cv2(bgr_fake_pil)
+
+                    logger.info("*" * 80)
 
                 else:
                     fake_diff = compute_diff(bgr_fake, aimg)
@@ -254,7 +260,7 @@ class UpscaledINSwapper(INSwapper):
                     borderValue=0.0,
                 )
                 img_white[img_white > 20] = 255
-                fthresh = opts.data.get("faceswaplab_upscaled_swapper_fthresh", 10)
+                fthresh = 10
                 print("fthresh", fthresh)
                 fake_diff[fake_diff < fthresh] = 0
                 fake_diff[fake_diff >= fthresh] = 255
@@ -263,9 +269,8 @@ class UpscaledINSwapper(INSwapper):
                 mask_h = np.max(mask_h_inds) - np.min(mask_h_inds)
                 mask_w = np.max(mask_w_inds) - np.min(mask_w_inds)
                 mask_size = int(np.sqrt(mask_h * mask_w))
-                erosion_factor = opts.data.get(
-                    "faceswaplab_upscaled_swapper_erosion", 1
-                )
+                erosion_factor = options.erosion_factor
+
                 k = max(int(mask_size // 10 * erosion_factor), int(10 * erosion_factor))
 
                 kernel = np.ones((k, k), np.uint8)

@@ -9,6 +9,7 @@ from io import BytesIO
 from typing import List, Tuple, Optional
 import numpy as np
 import requests
+import safetensors
 
 
 class InpaintingWhen(Enum):
@@ -47,6 +48,23 @@ class InpaintingOptions(BaseModel):
     inpainting_model: str = Field(
         description="Inpainting model", examples=["Current"], default="Current"
     )
+
+
+class InswappperOptions(BaseModel):
+    face_restorer_name: str = Field(
+        description="face restorer name", default="CodeFormer"
+    )
+    restorer_visibility: float = Field(
+        description="face restorer visibility", default=1, le=1, ge=0
+    )
+    codeformer_weight: float = Field(
+        description="face restorer codeformer weight", default=1, le=1, ge=0
+    )
+    upscaler_name: str = Field(description="upscaler name", default=None)
+    improved_mask: bool = Field(description="Use Improved Mask", default=False)
+    color_corrections: bool = Field(description="Use Color Correction", default=False)
+    sharpen: bool = Field(description="Sharpen Image", default=False)
+    erosion_factor: float = Field(description="Erosion Factor", default=1, le=10, ge=0)
 
 
 class FaceSwapUnit(BaseModel):
@@ -115,6 +133,11 @@ class FaceSwapUnit(BaseModel):
 
     pre_inpainting: Optional[InpaintingOptions] = Field(
         description="Inpainting options",
+        default=None,
+    )
+
+    swapping_options: Optional[InswappperOptions] = Field(
+        description="PostProcessing & Mask options",
         default=None,
     )
 
@@ -244,3 +267,26 @@ def compare_faces(
     )
 
     return float(result.text)
+
+
+def safetensors_to_base64(file_path: str) -> str:
+    with open(file_path, "rb") as file:
+        file_bytes = file.read()
+        return "data:application/face;base64," + base64.b64encode(file_bytes).decode(
+            "utf-8"
+        )
+
+
+def base64_to_safetensors(base64str: str, output_path: str) -> None:
+    try:
+        base64_data = base64str.split("base64,")[-1]
+        file_bytes = base64.b64decode(base64_data)
+        with open(output_path, "wb") as file:
+            file.write(file_bytes)
+        with safetensors.safe_open(output_path, framework="pt") as f:
+            print(output_path, "keys =", f.keys())
+    except Exception as e:
+        print("Error : failed to convert base64 string to safetensor", e)
+        import traceback
+
+        traceback.print_exc()

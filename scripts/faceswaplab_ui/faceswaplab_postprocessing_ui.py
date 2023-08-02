@@ -17,7 +17,7 @@ def postprocessing_ui() -> List[gr.components.Component]:
                 choices=["None"] + [x.name() for x in shared.face_restorers],
                 value=lambda: opts.data.get(
                     "faceswaplab_pp_default_face_restorer",
-                    shared.face_restorers[0].name(),
+                    "None",
                 ),
                 type="value",
                 elem_id="faceswaplab_pp_face_restorer",

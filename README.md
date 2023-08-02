@@ -14,7 +14,7 @@ While FaceSwapLab is still under development, it has reached a good level of sta
 
 In short:
 
-+ **Ethical Guideline:** This extension should not be forked to create a public, easy way to circumvent NSFW filtering.
++ **Ethical Guideline:** This extension should not be forked to create a public, easy way to bypass NSFW filtering. If you modify it for this purpose, keep it private, or you'll be banned.
 + **License:** This software is distributed under the terms of the GNU Affero General Public License (AGPL), version 3 or later.
 + **Model License:** This software uses InsightFace's pre-trained models, which are available for non-commercial research purposes only.
 

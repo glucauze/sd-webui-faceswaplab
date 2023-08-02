@@ -249,6 +249,8 @@ def tools_ui() -> None:
                 preview = gr.components.Image(
                     type="pil",
                     label="Preview",
+                    width=512,
+                    height=512,
                     interactive=False,
                     elem_id="faceswaplab_build_preview_face",
                 )

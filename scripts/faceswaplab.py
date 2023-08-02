@@ -73,14 +73,6 @@ class FaceSwapScript(scripts.Script):
         return opts.data.get("faceswaplab_units_count", 3)
 
     @property
-    def upscaled_swapper_in_generated(self) -> bool:
-        return opts.data.get("faceswaplab_upscaled_swapper", False)
-
-    @property
-    def upscaled_swapper_in_source(self) -> bool:
-        return opts.data.get("faceswaplab_upscaled_swapper_in_source", False)
-
-    @property
     def enabled(self) -> bool:
         """Return True if any unit is enabled and the state is not interupted"""
         return any([u.enable for u in self.units]) and not shared.state.interrupted
@@ -152,7 +144,6 @@ class FaceSwapScript(scripts.Script):
                         get_current_model(),
                         self.swap_in_source_units,
                         images=init_images,
-                        upscaled_swapper=self.upscaled_swapper_in_source,
                         force_blend=True,
                     )
                     logger.info(f"processed init images: {len(init_images)}")
@@ -187,7 +178,6 @@ class FaceSwapScript(scripts.Script):
                             get_current_model(),
                             self.swap_in_generated_units,
                             images=[(img, info)],
-                            upscaled_swapper=self.upscaled_swapper_in_generated,
                         )
                         if swapped_images is None:
                             continue
