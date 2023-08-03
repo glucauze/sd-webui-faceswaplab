@@ -50,7 +50,7 @@ from scripts.faceswaplab_globals import FACE_PARSER_DIR
 ROOT_DIR = FACE_PARSER_DIR
 
 
-def load_file_from_url(url, model_dir=None, progress=True, file_name=None):
+def load_file_from_url(url: str, model_dir=None, progress=True, file_name=None):
     """Ref:https://github.com/1adrianb/face-alignment/blob/master/face_alignment/utils.py"""
     if model_dir is None:
         hub_dir = get_dir()

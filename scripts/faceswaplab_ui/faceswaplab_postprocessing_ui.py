@@ -7,9 +7,9 @@ from scripts.faceswaplab_postprocessing.postprocessing_options import Inpainting
 
 
 def postprocessing_ui() -> List[gr.components.Component]:
-    with gr.Tab(f"Post-Processing"):
+    with gr.Tab(f"Global Post-Processing"):
         gr.Markdown(
-            """Upscaling is performed on the whole image. Upscaling happens before face restoration."""
+            """Upscaling is performed on the whole image and all faces (including not swapped). Upscaling happens before face restoration."""
         )
         with gr.Row():
             face_restorer_name = gr.Radio(
@@ -17,7 +17,7 @@ def postprocessing_ui() -> List[gr.components.Component]:
                 choices=["None"] + [x.name() for x in shared.face_restorers],
                 value=lambda: opts.data.get(
                     "faceswaplab_pp_default_face_restorer",
-                    shared.face_restorers[0].name(),
+                    "None",
                 ),
                 type="value",
                 elem_id="faceswaplab_pp_face_restorer",
@@ -130,11 +130,11 @@ def postprocessing_ui() -> List[gr.components.Component]:
         upscaler_name,
         upscaler_scale,
         upscaler_visibility,
+        inpainting_when,
         inpainting_denoising_strength,
         inpainting_denoising_prompt,
         inpainting_denoising_negative_prompt,
         inpainting_denoising_steps,
         inpainting_sampler,
-        inpainting_when,
         inpaiting_model,
     ]

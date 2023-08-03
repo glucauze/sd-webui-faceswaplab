@@ -5,11 +5,12 @@ from scripts.faceswaplab_utils.faceswaplab_logging import logger
 from PIL import Image
 import numpy as np
 from modules import codeformer_model
+from scripts.faceswaplab_utils.typing import *
 
 
-def upscale_img(image: Image.Image, pp_options: PostProcessingOptions) -> Image.Image:
+def upscale_img(image: PILImage, pp_options: PostProcessingOptions) -> PILImage:
     if pp_options.upscaler is not None and pp_options.upscaler.name != "None":
-        original_image = image.copy()
+        original_image: PILImage = image.copy()
         logger.info(
             "Upscale with %s scale = %s",
             pp_options.upscaler.name,
@@ -18,7 +19,12 @@ def upscale_img(image: Image.Image, pp_options: PostProcessingOptions) -> Image.
         result_image = pp_options.upscaler.scaler.upscale(
             image, pp_options.scale, pp_options.upscaler.data_path
         )
-        if pp_options.scale == 1:
+
+        # FIXME : Could be better (managing images whose dimensions are not multiples of 16)
+        if pp_options.scale == 1 and original_image.size == result_image.size:
+            logger.debug(
+                "Sizes orig=%s, result=%s", original_image.size, result_image.size
+            )
             result_image = Image.blend(
                 original_image, result_image, pp_options.upscale_visibility
             )

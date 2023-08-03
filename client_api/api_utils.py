@@ -9,6 +9,7 @@ from io import BytesIO
 from typing import List, Tuple, Optional
 import numpy as np
 import requests
+import safetensors
 
 
 class InpaintingWhen(Enum):
@@ -16,6 +17,54 @@ class InpaintingWhen(Enum):
     BEFORE_UPSCALING = "Before Upscaling/all"
     BEFORE_RESTORE_FACE = "After Upscaling/Before Restore Face"
     AFTER_ALL = "After All"
+
+
+class InpaintingOptions(BaseModel):
+    inpainting_denoising_strengh: float = Field(
+        description="Inpainting denoising strenght", default=0, lt=1, ge=0
+    )
+    inpainting_prompt: str = Field(
+        description="Inpainting denoising strenght",
+        examples=["Portrait of a [gender]"],
+        default="Portrait of a [gender]",
+    )
+    inpainting_negative_prompt: str = Field(
+        description="Inpainting denoising strenght",
+        examples=[
+            "Deformed, blurry, bad anatomy, disfigured, poorly drawn face, mutation"
+        ],
+        default="",
+    )
+    inpainting_steps: int = Field(
+        description="Inpainting steps",
+        examples=["Portrait of a [gender]"],
+        ge=1,
+        le=150,
+        default=20,
+    )
+    inpainting_sampler: str = Field(
+        description="Inpainting sampler", examples=["Euler"], default="Euler"
+    )
+    inpainting_model: str = Field(
+        description="Inpainting model", examples=["Current"], default="Current"
+    )
+
+
+class InswappperOptions(BaseModel):
+    face_restorer_name: str = Field(
+        description="face restorer name", default="CodeFormer"
+    )
+    restorer_visibility: float = Field(
+        description="face restorer visibility", default=1, le=1, ge=0
+    )
+    codeformer_weight: float = Field(
+        description="face restorer codeformer weight", default=1, le=1, ge=0
+    )
+    upscaler_name: str = Field(description="upscaler name", default=None)
+    improved_mask: bool = Field(description="Use Improved Mask", default=False)
+    color_corrections: bool = Field(description="Use Color Correction", default=False)
+    sharpen: bool = Field(description="Sharpen Image", default=False)
+    erosion_factor: float = Field(description="Erosion Factor", default=1, le=10, ge=0)
 
 
 class FaceSwapUnit(BaseModel):
@@ -82,6 +131,21 @@ class FaceSwapUnit(BaseModel):
         default=0,
     )
 
+    pre_inpainting: Optional[InpaintingOptions] = Field(
+        description="Inpainting options",
+        default=None,
+    )
+
+    swapping_options: Optional[InswappperOptions] = Field(
+        description="PostProcessing & Mask options",
+        default=None,
+    )
+
+    post_inpainting: Optional[InpaintingOptions] = Field(
+        description="Inpainting options",
+        default=None,
+    )
+
     def get_batch_images(self) -> List[Image.Image]:
         images = []
         if self.batch_images:
@@ -104,39 +168,15 @@ class PostProcessingOptions(BaseModel):
     upscaler_visibility: float = Field(
         description="upscaler visibility", default=1, le=1, ge=0
     )
-
-    inpainting_denoising_strengh: float = Field(
-        description="Inpainting denoising strenght", default=0, lt=1, ge=0
-    )
-    inpainting_prompt: str = Field(
-        description="Inpainting denoising strenght",
-        examples=["Portrait of a [gender]"],
-        default="Portrait of a [gender]",
-    )
-    inpainting_negative_prompt: str = Field(
-        description="Inpainting denoising strenght",
-        examples=[
-            "Deformed, blurry, bad anatomy, disfigured, poorly drawn face, mutation"
-        ],
-        default="",
-    )
-    inpainting_steps: int = Field(
-        description="Inpainting steps",
-        examples=["Portrait of a [gender]"],
-        ge=1,
-        le=150,
-        default=20,
-    )
-    inpainting_sampler: str = Field(
-        description="Inpainting sampler", examples=["Euler"], default="Euler"
-    )
     inpainting_when: InpaintingWhen = Field(
         description="When inpainting happens",
         examples=[e.value for e in InpaintingWhen.__members__.values()],
         default=InpaintingWhen.NEVER,
     )
-    inpainting_model: str = Field(
-        description="Inpainting model", examples=["Current"], default="Current"
+
+    inpainting_options: Optional[InpaintingOptions] = Field(
+        description="Inpainting options",
+        default=None,
     )
 
 
@@ -147,7 +187,7 @@ class FaceSwapRequest(BaseModel):
         default=None,
     )
     units: List[FaceSwapUnit]
-    postprocessing: Optional[PostProcessingOptions]
+    postprocessing: Optional[PostProcessingOptions] = None
 
 
 class FaceSwapResponse(BaseModel):
@@ -227,3 +267,26 @@ def compare_faces(
     )
 
     return float(result.text)
+
+
+def safetensors_to_base64(file_path: str) -> str:
+    with open(file_path, "rb") as file:
+        file_bytes = file.read()
+        return "data:application/face;base64," + base64.b64encode(file_bytes).decode(
+            "utf-8"
+        )
+
+
+def base64_to_safetensors(base64str: str, output_path: str) -> None:
+    try:
+        base64_data = base64str.split("base64,")[-1]
+        file_bytes = base64.b64decode(base64_data)
+        with open(output_path, "wb") as file:
+            file.write(file_bytes)
+        with safetensors.safe_open(output_path, framework="pt") as f:
+            print(output_path, "keys =", f.keys())
+    except Exception as e:
+        print("Error : failed to convert base64 string to safetensor", e)
+        import traceback
+
+        traceback.print_exc()

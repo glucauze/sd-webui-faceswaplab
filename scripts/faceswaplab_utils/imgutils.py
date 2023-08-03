@@ -1,5 +1,5 @@
 import io
-from typing import List, Optional, Tuple, Union, Dict
+from typing import List, Optional, Union, Dict
 from PIL import Image
 import cv2
 import numpy as np
@@ -10,14 +10,16 @@ from scripts.faceswaplab_globals import NSFW_SCORE_THRESHOLD
 from modules import processing
 import base64
 from collections import Counter
+from scripts.faceswaplab_utils.typing import BoxCoords, CV2ImgU8, PILImage
+from scripts.faceswaplab_utils.faceswaplab_logging import logger
 
 
-def check_against_nsfw(img: Image.Image) -> bool:
+def check_against_nsfw(img: PILImage) -> bool:
     """
     Check if an image exceeds the Not Safe for Work (NSFW) score.
 
     Parameters:
-    img (PIL.Image.Image): The image to be checked.
+    img (PILImage): The image to be checked.
 
     Returns:
     bool: True if any part of the image is considered NSFW, False otherwise.
@@ -32,33 +34,33 @@ def check_against_nsfw(img: Image.Image) -> bool:
     return any(shapes)
 
 
-def pil_to_cv2(pil_img: Image.Image) -> np.ndarray:  # type: ignore
+def pil_to_cv2(pil_img: PILImage) -> CV2ImgU8:  # type: ignore
     """
     Convert a PIL Image into an OpenCV image (cv2).
 
     Args:
-        pil_img (PIL.Image.Image): An image in PIL format.
+        pil_img (PILImage): An image in PIL format.
 
     Returns:
-        np.ndarray: The input image converted to OpenCV format (BGR).
+        CV2ImgU8: The input image converted to OpenCV format (BGR).
     """
     return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
 
 
-def cv2_to_pil(cv2_img: np.ndarray) -> Image.Image:  # type: ignore
+def cv2_to_pil(cv2_img: CV2ImgU8) -> PILImage:  # type: ignore
     """
     Convert an OpenCV image (cv2) into a PIL Image.
 
     Args:
-        cv2_img (np.ndarray): An image in OpenCV format (BGR).
+        cv2_img (CV2ImgU8): An image in OpenCV format (BGR).
 
     Returns:
-        PIL.Image.Image: The input image converted to PIL format (RGB).
+        PILImage: The input image converted to PIL format (RGB).
     """
     return Image.fromarray(cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB))
 
 
-def torch_to_pil(images: torch.Tensor) -> List[Image.Image]:
+def torch_to_pil(tensor: torch.Tensor) -> List[PILImage]:
     """
     Converts a tensor image or a batch of tensor images to a PIL image or a list of PIL images.
 
@@ -72,7 +74,7 @@ def torch_to_pil(images: torch.Tensor) -> List[Image.Image]:
     list
         A list of PIL images.
     """
-    images = images.cpu().permute(0, 2, 3, 1).numpy()
+    images: CV2ImgU8 = tensor.cpu().permute(0, 2, 3, 1).numpy()
     if images.ndim == 3:
         images = images[None, ...]
     images = (images * 255).round().astype("uint8")
@@ -80,13 +82,13 @@ def torch_to_pil(images: torch.Tensor) -> List[Image.Image]:
     return pil_images
 
 
-def pil_to_torch(pil_images: Union[Image.Image, List[Image.Image]]) -> torch.Tensor:
+def pil_to_torch(pil_images: Union[PILImage, List[PILImage]]) -> torch.Tensor:
     """
     Converts a PIL image or a list of PIL images to a torch tensor or a batch of torch tensors.
 
     Parameters
     ----------
-    pil_images : Union[Image.Image, List[Image.Image]]
+    pil_images : Union[PILImage, List[PILImage]]
         A PIL image or a list of PIL images.
 
     Returns
@@ -104,7 +106,7 @@ def pil_to_torch(pil_images: Union[Image.Image, List[Image.Image]]) -> torch.Ten
     return torch_image
 
 
-def create_square_image(image_list: List[Image.Image]) -> Optional[Image.Image]:
+def create_square_image(image_list: List[PILImage]) -> Optional[PILImage]:
     """
     Creates a square image by combining multiple images in a grid pattern.
 
@@ -156,33 +158,21 @@ def create_square_image(image_list: List[Image.Image]) -> Optional[Image.Image]:
     return None
 
 
-# def create_mask(image : Image.Image, box_coords : Tuple[int, int, int, int]) -> Image.Image:
-#     width, height = image.size
-#     mask = Image.new("L", (width, height), 255)
-#     x1, y1, x2, y2 = box_coords
-#     for x in range(width):
-#         for y in range(height):
-#             if x1 <= x <= x2 and y1 <= y <= y2:
-#                 mask.putpixel((x, y), 255)
-#             else:
-#                 mask.putpixel((x, y), 0)
-#     return mask
-
-
 def create_mask(
-    image: Image.Image, box_coords: Tuple[int, int, int, int]
-) -> Image.Image:
+    image: PILImage,
+    box_coords: BoxCoords,
+) -> PILImage:
     """
     Create a binary mask for a given image and bounding box coordinates.
 
     Args:
-        image (PIL.Image.Image): The input image.
+        image (PILImage): The input image.
         box_coords (Tuple[int, int, int, int]): A tuple of 4 integers defining the bounding box.
         It follows the pattern (x1, y1, x2, y2), where (x1, y1) is the top-left coordinate of the
         box and (x2, y2) is the bottom-right coordinate of the box.
 
     Returns:
-        PIL.Image.Image: A binary mask of the same size as the input image, where pixels within
+        PILImage: A binary mask of the same size as the input image, where pixels within
         the bounding box are white (255) and pixels outside the bounding box are black (0).
     """
     width, height = image.size
@@ -195,8 +185,8 @@ def create_mask(
 
 
 def apply_mask(
-    img: Image.Image, p: processing.StableDiffusionProcessing, batch_index: int
-) -> Image.Image:
+    img: PILImage, p: processing.StableDiffusionProcessing, batch_index: int
+) -> PILImage:
     """
     Apply mask overlay and color correction to an image if enabled
 
@@ -213,8 +203,10 @@ def apply_mask(
             overlays = p.overlay_images
             if overlays is None or batch_index >= len(overlays):
                 return img
-            overlay: Image.Image = overlays[batch_index]
-            overlay = overlay.resize((img.size), resample=Image.Resampling.LANCZOS)
+            overlay: PILImage = overlays[batch_index]
+            logger.debug("Overlay size %s, Image size %s", overlay.size, img.size)
+            if overlay.size != img.size:
+                overlay = overlay.resize((img.size), resample=Image.Resampling.LANCZOS)
             img = img.copy()
             img.paste(overlay, (0, 0), overlay)
             return img
@@ -227,9 +219,7 @@ def apply_mask(
     return img
 
 
-def prepare_mask(
-    mask: Image.Image, p: processing.StableDiffusionProcessing
-) -> Image.Image:
+def prepare_mask(mask: PILImage, p: processing.StableDiffusionProcessing) -> PILImage:
     """
     Prepare an image mask for the inpainting process. (This comes from controlnet)
 
@@ -243,12 +233,12 @@ def prepare_mask(
        apply a Gaussian blur to the mask with a radius equal to 'mask_blur'.
 
     Args:
-        mask (Image.Image): The input mask as a PIL Image object.
+        mask (PILImage): The input mask as a PIL Image object.
         p (processing.StableDiffusionProcessing): An instance of the StableDiffusionProcessing class
                                                    containing the processing parameters.
 
     Returns:
-        mask (Image.Image): The prepared mask as a PIL Image object.
+        mask (PILImage): The prepared mask as a PIL Image object.
     """
     mask = mask.convert("L")
     # FIXME : Properly fix blur
@@ -257,7 +247,7 @@ def prepare_mask(
     return mask
 
 
-def base64_to_pil(base64str: Optional[str]) -> Optional[Image.Image]:
+def base64_to_pil(base64str: Optional[str]) -> Optional[PILImage]:
     """
     Converts a base64 string to a PIL Image object.
 
@@ -267,7 +257,7 @@ def base64_to_pil(base64str: Optional[str]) -> Optional[Image.Image]:
     will return None.
 
     Returns:
-    Optional[Image.Image]: A PIL Image object created from the base64 string. If the input is None,
+    Optional[PILImage]: A PIL Image object created from the base64 string. If the input is None,
     the function returns None.
 
     Raises:

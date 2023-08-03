@@ -1,3 +1,4 @@
+import tempfile
 from PIL import Image
 import numpy as np
 from fastapi import FastAPI
@@ -17,7 +18,9 @@ from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,
 )
 from client_api import api_utils
-from scripts.faceswaplab_postprocessing.postprocessing_options import InpaintingWhen
+from scripts.faceswaplab_utils.face_checkpoints_utils import (
+    build_face_checkpoint_and_save,
+)
 
 
 def encode_to_base64(image: Union[str, Image.Image, np.ndarray]) -> str:  # type: ignore
@@ -58,58 +61,12 @@ def encode_np_to_base64(image: np.ndarray) -> str:  # type: ignore
     return api.encode_pil_to_base64(pil)
 
 
-def get_postprocessing_options(
-    options: api_utils.PostProcessingOptions,
-) -> PostProcessingOptions:
-    pp_options = PostProcessingOptions(
-        face_restorer_name=options.face_restorer_name,
-        restorer_visibility=options.restorer_visibility,
-        codeformer_weight=options.codeformer_weight,
-        upscaler_name=options.upscaler_name,
-        scale=options.scale,
-        upscale_visibility=options.upscaler_visibility,
-        inpainting_denoising_strengh=options.inpainting_denoising_strengh,
-        inpainting_prompt=options.inpainting_prompt,
-        inpainting_negative_prompt=options.inpainting_negative_prompt,
-        inpainting_steps=options.inpainting_steps,
-        inpainting_sampler=options.inpainting_sampler,
-        # hacky way to prevent having a separate file for Inpainting when (2 classes)
-        # therfore a conversion is required from api IW to server side IW
-        inpainting_when=InpaintingWhen(options.inpainting_when.value),
-        inpainting_model=options.inpainting_model,
-    )
-
-    assert isinstance(
-        pp_options.inpainting_when, InpaintingWhen
-    ), "Value is not a valid InpaintingWhen enum"
-
-    return pp_options
-
-
 def get_faceswap_units_settings(
     api_units: List[api_utils.FaceSwapUnit],
 ) -> List[FaceSwapUnitSettings]:
     units = []
     for u in api_units:
-        units.append(
-            FaceSwapUnitSettings(
-                source_img=base64_to_pil(u.source_img),
-                source_face=u.source_face,
-                _batch_files=u.get_batch_images(),
-                blend_faces=u.blend_faces,
-                enable=True,
-                same_gender=u.same_gender,
-                sort_by_size=u.sort_by_size,
-                check_similarity=u.check_similarity,
-                _compute_similarity=u.compute_similarity,
-                min_ref_sim=u.min_ref_sim,
-                min_sim=u.min_sim,
-                _faces_index=",".join([str(i) for i in (u.faces_index)]),
-                reference_face_index=u.reference_face_index,
-                swap_in_generated=True,
-                swap_in_source=False,
-            )
-        )
+        units.append(FaceSwapUnitSettings.from_api_dto(u))
     return units
 
 
@@ -137,7 +94,9 @@ def faceswaplab_api(_: gr.Blocks, app: FastAPI) -> None:
 
         if src_image is not None:
             if request.postprocessing:
-                pp_options = get_postprocessing_options(request.postprocessing)
+                pp_options = PostProcessingOptions.from_api_dto(request.postprocessing)
+            else:
+                pp_options = None
             units = get_faceswap_units_settings(request.units)
 
             swapped_images = swapper.batch_process(
@@ -172,7 +131,7 @@ def faceswaplab_api(_: gr.Blocks, app: FastAPI) -> None:
     ) -> api_utils.FaceSwapExtractResponse:
         pp_options = None
         if request.postprocessing:
-            pp_options = get_postprocessing_options(request.postprocessing)
+            pp_options = PostProcessingOptions.from_api_dto(request.postprocessing)
         images = [base64_to_pil(img) for img in request.images]
         faces = swapper.extract_faces(
             images, extract_path=None, postprocess_options=pp_options
@@ -180,3 +139,23 @@ def faceswaplab_api(_: gr.Blocks, app: FastAPI) -> None:
         result_images = [encode_to_base64(img) for img in faces]
         response = api_utils.FaceSwapExtractResponse(images=result_images)
         return response
+
+    @app.post(
+        "/faceswaplab/build",
+        tags=["faceswaplab"],
+        description="Build a face checkpoint using base64 images, return base64 satetensors",
+    )
+    async def build(base64_images: List[str]) -> Optional[str]:
+        if len(base64_images) > 0:
+            pil_images = [base64_to_pil(img) for img in base64_images]
+            with tempfile.NamedTemporaryFile(
+                delete=True, suffix=".safetensors"
+            ) as temp_file:
+                build_face_checkpoint_and_save(
+                    images=pil_images,
+                    name="api_ckpt",
+                    overwrite=True,
+                    path=temp_file.name,
+                )
+                return api_utils.safetensors_to_base64(temp_file.name)
+        return None

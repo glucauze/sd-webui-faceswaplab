@@ -112,7 +112,7 @@ A face checkpoint is a saved embedding of a face, generated from multiple images
 
 The primary advantage of face checkpoints is their size. An embedding is only around 2KB, meaning it's lightweight and can be reused later without requiring additional calculations.
 
-Face checkpoints are saved as `.safetensors` files. Please be aware that exchanging `.safetensors` files carries potential security risks. These files, by default, are not secure and could potentially execute malicious code when opened. Therefore, extreme caution should be exercised when sharing or receiving this type of file.
+Face checkpoints are saved as `.safetensors` files.
 
 #### How is similarity determined?
 
@@ -133,3 +133,25 @@ The model generates faces with a resolution of 128x128, which is relatively low.
 SimSwap models are based on older InsightFace architectures, and SimSwap has not been released as a Python package. Its incorporation would complicate the process, and it does not guarantee any substantial gain.
 
 If you manage to implement SimSwap successfully, feel free to submit a pull request.
+
+
+#### Shasum of inswapper model
+
+Check that your model is correct and not corrupted :
+
+```shell
+$>sha1sum inswapper_128.onnx 
+17a64851eaefd55ea597ee41e5c18409754244c5  inswapper_128.onnx
+
+$>sha256sum inswapper_128.onnx 
+e4a3f08c753cb72d04e10aa0f7dbe3deebbf39567d4ead6dce08e98aa49e16af  inswapper_128.onnx
+
+$>sha512sum inswapper_128.onnx 
+4311f4ccd9da58ec544e912b32ac0cba95f5ab4b1a06ac367efd3e157396efbae1097f624f10e77dd811fbba0917fa7c96e73de44563aa6099e5f46830965069  inswapper_128.onnx
+```
+
+#### Gradio errors  (issubclass() arg 1 must be a class)
+
+Older versions of gradio don't work well with the extension. See this bug report : https://github.com/glucauze/sd-webui-faceswaplab/issues/5
+
+It has been tested on 3.32.0 

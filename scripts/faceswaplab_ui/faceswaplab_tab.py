@@ -1,31 +1,27 @@
-import os
-from pprint import pformat, pprint
-from scripts.faceswaplab_utils import face_utils
+import traceback
+from pprint import pformat
+from typing import *
+from scripts.faceswaplab_utils.typing import *
 import gradio as gr
-import modules.scripts as scripts
 import onnx
 import pandas as pd
-from scripts.faceswaplab_ui.faceswaplab_unit_ui import faceswap_unit_ui
-from scripts.faceswaplab_ui.faceswaplab_postprocessing_ui import postprocessing_ui
-from modules import scripts
-from PIL import Image
 from modules.shared import opts
+from PIL import Image
 
-from scripts.faceswaplab_utils import imgutils
-from scripts.faceswaplab_utils.models_utils import get_models
-from scripts.faceswaplab_utils.faceswaplab_logging import logger
 import scripts.faceswaplab_swapping.swapper as swapper
 from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,
 )
-from scripts.faceswaplab_postprocessing.postprocessing import enhance_image
-from dataclasses import fields
-from typing import Any, Dict, List, Optional
+from scripts.faceswaplab_ui.faceswaplab_postprocessing_ui import postprocessing_ui
 from scripts.faceswaplab_ui.faceswaplab_unit_settings import FaceSwapUnitSettings
-import re
+from scripts.faceswaplab_ui.faceswaplab_unit_ui import faceswap_unit_ui
+from scripts.faceswaplab_utils import face_checkpoints_utils, imgutils
+from scripts.faceswaplab_utils.faceswaplab_logging import logger
+from scripts.faceswaplab_utils.models_utils import get_models
+from scripts.faceswaplab_utils.ui_utils import dataclasses_from_flat_list
 
 
-def compare(img1: Image.Image, img2: Image.Image) -> str:
+def compare(img1: PILImage, img2: PILImage) -> str:
     """
     Compares the similarity between two faces extracted from images using cosine similarity.
 
@@ -43,14 +39,15 @@ def compare(img1: Image.Image, img2: Image.Image) -> str:
     except Exception as e:
         logger.error("Fail to compare", e)
 
+        traceback.print_exc()
     return "You need 2 images to compare"
 
 
 def extract_faces(
     files: List[gr.File],
     extract_path: Optional[str],
-    *components: List[gr.components.Component],
-) -> Optional[List[Image.Image]]:
+    *components: Tuple[gr.components.Component, ...],
+) -> Optional[List[PILImage]]:
     """
     Extracts faces from a list of image files.
 
@@ -69,22 +66,34 @@ def extract_faces(
                          If no faces are found, None is returned.
     """
 
-    postprocess_options = PostProcessingOptions(*components)  # type: ignore
-    images = [
-        Image.open(file.name) for file in files
-    ]  # potentially greedy but Image.open is supposed to be lazy
-    return swapper.extract_faces(
-        images, extract_path=extract_path, postprocess_options=postprocess_options
-    )
+    if files and len(files) == 0:
+        logger.error("You need at least one image file to extract")
+        return []
+    try:
+        postprocess_options = dataclasses_from_flat_list(
+            [PostProcessingOptions], components
+        ).pop()
+        images = [
+            Image.open(file.name) for file in files
+        ]  # potentially greedy but Image.open is supposed to be lazy
+        result_images = swapper.extract_faces(
+            images, extract_path=extract_path, postprocess_options=postprocess_options
+        )
+        return result_images
+    except Exception as e:
+        logger.error("Failed to extract : %s", e)
+
+        traceback.print_exc()
+    return None
 
 
-def analyse_faces(image: Image.Image, det_threshold: float = 0.5) -> Optional[str]:
+def analyse_faces(image: PILImage, det_threshold: float = 0.5) -> Optional[str]:
     """
     Function to analyze the faces in an image and provide a detailed report.
 
     Parameters
     ----------
-    image : PIL.Image.Image
+    image : PIL.PILImage
         The input image where faces will be detected. The image must be a PIL Image object.
 
     det_threshold : float, optional
@@ -122,27 +131,13 @@ def analyse_faces(image: Image.Image, det_threshold: float = 0.5) -> Optional[st
     except Exception as e:
         logger.error("Analysis Failed : %s", e)
 
+        traceback.print_exc()
     return None
 
 
-def sanitize_name(name: str) -> str:
-    """
-    Sanitize the input name by removing special characters and replacing spaces with underscores.
-
-    Parameters:
-        name (str): The input name to be sanitized.
-
-    Returns:
-        str: The sanitized name with special characters removed and spaces replaced by underscores.
-    """
-    name = re.sub("[^A-Za-z0-9_. ]+", "", name)
-    name = name.replace(" ", "_")
-    return name[:255]
-
-
 def build_face_checkpoint_and_save(
-    batch_files: gr.File, name: str
-) -> Optional[Image.Image]:
+    batch_files: gr.File, name: str, overwrite: bool
+) -> PILImage:
     """
     Builds a face checkpoint using the provided image files, performs face swapping,
     and saves the result to a file. If a blended face is successfully obtained and the face swapping
@@ -153,66 +148,23 @@ def build_face_checkpoint_and_save(
         name (str): The name assigned to the face checkpoint.
 
     Returns:
-        PIL.Image.Image or None: The resulting swapped face image if the process is successful; None otherwise.
+        PIL.PILImage or None: The resulting swapped face image if the process is successful; None otherwise.
     """
 
     try:
-        name = sanitize_name(name)
-        batch_files = batch_files or []
-        logger.info("Build %s %s", name, [x.name for x in batch_files])
-        faces = swapper.get_faces_from_img_files(batch_files)
-        blended_face = swapper.blend_faces(faces)
-        preview_path = os.path.join(
-            scripts.basedir(), "extensions", "sd-webui-faceswaplab", "references"
+        if not batch_files:
+            logger.error("No face found")
+            return None
+        images = [Image.open(file.name) for file in batch_files]
+        preview_image = face_checkpoints_utils.build_face_checkpoint_and_save(
+            images, name, overwrite=overwrite
         )
-
-        faces_path = os.path.join(scripts.basedir(), "models", "faceswaplab", "faces")
-
-        os.makedirs(faces_path, exist_ok=True)
-
-        target_img = None
-        if blended_face:
-            if blended_face["gender"] == 0:
-                target_img = Image.open(os.path.join(preview_path, "woman.png"))
-            else:
-                target_img = Image.open(os.path.join(preview_path, "man.png"))
-
-            if name == "":
-                name = "default_name"
-            pprint(blended_face)
-            result = swapper.swap_face(
-                blended_face, blended_face, target_img, get_models()[0]
-            )
-            result_image = enhance_image(
-                result.image,
-                PostProcessingOptions(
-                    face_restorer_name="CodeFormer", restorer_visibility=1
-                ),
-            )
-
-            file_path = os.path.join(faces_path, f"{name}.safetensors")
-            file_number = 1
-            while os.path.exists(file_path):
-                file_path = os.path.join(
-                    faces_path, f"{name}_{file_number}.safetensors"
-                )
-                file_number += 1
-            result_image.save(file_path + ".png")
-
-            face_utils.save_face(filename=file_path, face=blended_face)
-            try:
-                data = face_utils.load_face(filename=file_path)
-                print(data)
-            except Exception as e:
-                print(e)
-            return result_image
-
-        print("No face found")
     except Exception as e:
         logger.error("Failed to build checkpoint %s", e)
-        return None
 
-    return target_img
+        traceback.print_exc()
+        return None
+    return preview_image
 
 
 def explore_onnx_faceswap_model(model_path: str) -> pd.DataFrame:
@@ -242,36 +194,32 @@ def explore_onnx_faceswap_model(model_path: str) -> pd.DataFrame:
 
         df = pd.DataFrame(data)
     except Exception as e:
-        logger.info("Failed to explore model %s", e)
+        logger.error("Failed to explore model %s", e)
+
+        traceback.print_exc()
         return None
     return df
 
 
 def batch_process(
-    files: List[gr.File], save_path: str, *components: List[gr.components.Component]
-) -> Optional[List[Image.Image]]:
+    files: List[gr.File], save_path: str, *components: Tuple[Any, ...]
+) -> List[PILImage]:
     try:
         units_count = opts.data.get("faceswaplab_units_count", 3)
-        units: List[FaceSwapUnitSettings] = []
 
-        # Parse and convert units flat components into FaceSwapUnitSettings
-        for i in range(0, units_count):
-            units += [FaceSwapUnitSettings.get_unit_configuration(i, components)]  # type: ignore
-
-        for i, u in enumerate(units):
-            logger.debug("%s, %s", pformat(i), pformat(u))
-
-        # Parse the postprocessing options
-        # We must first find where to start from (after face swapping units)
-        len_conf: int = len(fields(FaceSwapUnitSettings))
-        shift: int = units_count * len_conf
-        postprocess_options = PostProcessingOptions(
-            *components[shift : shift + len(fields(PostProcessingOptions))]  # type: ignore
+        classes: List[Any] = dataclasses_from_flat_list(
+            [FaceSwapUnitSettings] * units_count + [PostProcessingOptions],
+            components,
         )
-        logger.debug("%s", pformat(postprocess_options))
+        units: List[FaceSwapUnitSettings] = [
+            u for u in classes if isinstance(u, FaceSwapUnitSettings)
+        ]
+        postprocess_options = classes[-1]
+
         images = [
             Image.open(file.name) for file in files
         ]  # potentially greedy but Image.open is supposed to be lazy
+
         return swapper.batch_process(
             images,
             save_path=save_path,
@@ -280,10 +228,9 @@ def batch_process(
         )
     except Exception as e:
         logger.error("Batch Process error : %s", e)
-        import traceback
 
         traceback.print_exc()
-    return None
+    return []
 
 
 def tools_ui() -> None:
@@ -294,7 +241,7 @@ def tools_ui() -> None:
                 """Build a face based on a batch list of images. Will blend the resulting face and store the checkpoint in the faceswaplab/faces directory."""
             )
             with gr.Row():
-                batch_files = gr.components.File(
+                build_batch_files = gr.components.File(
                     type="file",
                     file_count="multiple",
                     label="Batch Sources Images",
@@ -304,14 +251,22 @@ def tools_ui() -> None:
                 preview = gr.components.Image(
                     type="pil",
                     label="Preview",
+                    width=512,
+                    height=512,
                     interactive=False,
                     elem_id="faceswaplab_build_preview_face",
                 )
-            name = gr.Textbox(
+            build_name = gr.Textbox(
                 value="Face",
                 placeholder="Name of the character",
                 label="Name of the character",
                 elem_id="faceswaplab_build_character_name",
+            )
+            build_overwrite = gr.Checkbox(
+                False,
+                placeholder="overwrite",
+                label="Overwrite Checkpoint if exist (else will add number)",
+                elem_id="faceswaplab_build_overwrite",
             )
             generate_checkpoint_btn = gr.Button(
                 "Save", elem_id="faceswaplab_build_save_btn"
@@ -427,7 +382,9 @@ def tools_ui() -> None:
     )
     compare_btn.click(compare, inputs=[img1, img2], outputs=[compare_result_text])
     generate_checkpoint_btn.click(
-        build_face_checkpoint_and_save, inputs=[batch_files, name], outputs=[preview]
+        build_face_checkpoint_and_save,
+        inputs=[build_batch_files, build_name, build_overwrite],
+        outputs=[preview],
     )
     extract_btn.click(
         extract_faces,
