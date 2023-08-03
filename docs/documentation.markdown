@@ -25,6 +25,8 @@ Here are the main options for configuring a unit:
 
 **You must always have at least one reference face OR a checkpoint. If both are selected, the checkpoint will be used and the reference ignored.**
 
+#### Similarity
+
 Always check for errors in the SD console. In particular, the absence of a reference face or a checkpoint can trigger errors.
 
 + **Comparison of faces** with the obtained swapped face: The swapped face can be compared to the original face using a distance function. The higher this value (from 1 to 0), the more similar the faces are. This calculation is performed if you activate **"Compute Similarity"** or **"Check Similarity"**. If you check the latter, you will have the opportunity to filter the output images with:
@@ -35,7 +37,43 @@ Always check for errors in the SD console. In particular, the absence of a refer
     + **Same gender:** the gender of the source face will be determined and only faces of the same gender will be considered.
     + **Sort by size:** faces will be sorted from largest to smallest.
 
-#### Post-processing
+#### Pre-Inpainting :
+
+This part is applied BEFORE face swapping and only on matching faces.
+
+The inpainting part works in the same way as adetailer. It sends each face to img2img for transformation. This is useful for transforming the face before swapping. For example, using a Lora model before swapping.
+
+You can use a specific model for the replacement, different from the model used for the generation.
+
+For inpainting to be active, denoising must be greater than 0 and the Inpainting When option must be set to:
+
+#### Post-Processing & Advanced Masks Options : (upscaled inswapper)
+
+By default, these settings are disabled, but you can use the global settings to modify the default behavior. These options are called "Default Upscaled swapper..."
+
+The 'Upscaled Inswapper' is an option in SD FaceSwapLab which allows for upscaling of each face using an upscaller prior to its integration into the image. This is achieved by modifying a small segment of the InsightFace code.
+
+The purpose of this feature is to enhance the quality of the face in the final image. While this process might slightly increase the processing time, it can deliver improved results. In certain cases, this could even eliminate the need for additional tools such as Codeformer or GFPGAN in postprocessing. See the processing order section to understand when and how it is used.
+
+![](/assets/images/upscaled_settings.png)
+
+The upscaled inswapper is disabled by default. It can be enabled in the sd options. Understanding the various steps helps explain why results may be unsatisfactory and how to address this issue.
+
++ **upscaler** : LDSR if None. The LDSR option generally gives the best results but at the expense of a lot of computational time. You should test other models to form an opinion. The 003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN model seems to give good results in a reasonable amount of time. It's not possible to disable upscaling, but it is possible to choose LANCZOS for speed if Codeformer is enabled in the upscaled inswapper. The result is generally satisfactory.
++ **restorer** : The face restorer to be used if necessary. Codeformer generally gives good results.
++ **sharpening** can provide more natural results, but it may also add artifacts. The same goes for **color correction**. By default, these options are set to False.
++ **improved mask:** The segmentation mask for the upscaled swapper is designed to avoid the square mask and prevent degradation of the non-face parts of the image. It is based on the Codeformer implementation. If "Use improved segmented mask (use pastenet to mask only the face)" and "upscaled inswapper" are checked in the settings, the mask will only cover the face, and will not be squared. However, depending on the image, this might introduce different types of problems such as artifacts on the border of the face.
++ **erosion factor:** it is possible to adjust the mask erosion parameters using the erosion settings. The higher this setting is, the more the mask is reduced.
+
+#### Post-Inpainting :
+
+This part is applied AFTER face swapping and only on matching faces.
+
+This is useful for adding details to faces. The stronger the denoising, the more likely you are to lose the resemblance of the face. Some samplers (DPM variants for instance) seem to better preserve this resemblance than others.
+
+## Global Post-processing
+
+By default, these settings are disabled, but you can use the global settings to modify the default behavior. These options are called default "UI Default global post processing..."
 
 The post-processing window looks very much like what you might find in the extra options, except for the inpainting part. The process takes place after all units have swapped faces.
 
@@ -82,21 +120,7 @@ The checkpoint can then be used in the main interface (use refresh button)
 ![](/assets/images/checkpoints_use.png)
 
 
-## Upscaled-inswapper
 
-The 'Upscaled Inswapper' is an option in SD FaceSwapLab which allows for upscaling of each face using an upscaller prior to its integration into the image. This is achieved by modifying a small segment of the InsightFace code.
-
-The purpose of this feature is to enhance the quality of the face in the final image. While this process might slightly increase the processing time, it can deliver improved results. In certain cases, this could even eliminate the need for additional tools such as Codeformer or GFPGAN in postprocessing. See the processing order section to understand when and how it is used.
-
-![](/assets/images/upscaled_settings.png)
-
-The upscaled inswapper is disabled by default. It can be enabled in the sd options. Understanding the various steps helps explain why results may be unsatisfactory and how to address this issue.
-
-+ **upscaler** : LDSR if None. The LDSR option generally gives the best results but at the expense of a lot of computational time. You should test other models to form an opinion. The 003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN model seems to give good results in a reasonable amount of time. It's not possible to disable upscaling, but it is possible to choose LANCZOS for speed if Codeformer is enabled in the upscaled inswapper. The result is generally satisfactory.
-+ **restorer** : The face restorer to be used if necessary. Codeformer generally gives good results.
-+ **sharpening** can provide more natural results, but it may also add artifacts. The same goes for **color correction**. By default, these options are set to False.
-+ **improved mask:** The segmentation mask for the upscaled swapper is designed to avoid the square mask and prevent degradation of the non-face parts of the image. It is based on the Codeformer implementation. If "Use improved segmented mask (use pastenet to mask only the face)" and "upscaled inswapper" are checked in the settings, the mask will only cover the face, and will not be squared. However, depending on the image, this might introduce different types of problems such as artifacts on the border of the face.
-+ **fthresh and erosion factor:** it is possible to adjust the mask erosion parameters using the fthresh and erosion settings. The higher these settings are (particularly erosion), the more the mask is reduced.
 
 ## Processing order:
 
@@ -123,42 +147,20 @@ The extension is activated after all other extensions have been processed.  Duri
 
 ![](/assets/images/step4.png)
 
+
+## API
+
+A specific API is available.  To understand how it works you can have a look at the example file in `client_utils`. You can also view the application's tests in the `tests` directory.
+
+The API is documented in the FaceSwapLab tags in the http://localhost:7860/docs docs.
+
+You don't have to use the api_utils.py file and pydantic types, but it can save time.
+
+
 ## Settings
 
-Here are the parameters that can be configured in sd settings and their default values
+You can change the program's default behavior in your webui's global settings (FaceSwapLab section in settings). This is particularly useful if you want to have default options for inpainting or for post-processsing, for example.
 
-### General Settings :
+The interface must be restarted to take the changes into account. Sometimes you have to reboot the entire webui server.
 
- Name | Description | Default Value
----|---|---
- faceswaplab_model | Insightface model to use| models[0] if len(models) &gt; 0 else "None"
- faceswaplab_keep_original | keep original image before swapping. It true, will show original image | False
- faceswaplab_units_count | How many faces units to use(requires restart) | 3
- faceswaplab_detection_threshold | Detection threshold to use to detect face, if low will detect non human face as face | 0.5
-
-### Default Settings :
-
-These parameters are used to configure the default settings displayed in post-processing.
-
- Name | Description | Default Value
- faceswaplab_pp_default_face_restorer | UI Default post processing face restorer (requires restart) | None
- faceswaplab_pp_default_face_restorer_visibility | UI Default post processing face restorer visibility (requires restart) | 1
- faceswaplab_pp_default_face_restorer_weight | UI Default post processing face restorer weight (requires restart) | 1
- faceswaplab_pp_default_upscaler | UI Default post processing upscaler (requires restart) | None
- faceswaplab_pp_default_upscaler_visibility | UI Default post processing upscaler visibility(requires restart) | 1
-
-### Upscaled inswapper Settings :
-
-These parameters are used to control the upscaled inswapper, see above.
-
- Name | Description | Default Value
- faceswaplab_upscaled_swapper | Upscaled swapper. Applied only to the swapped faces. Apply transformations before merging with the original image | False
- faceswaplab_upscaled_swapper_upscaler | Upscaled swapper upscaler (Recommended : LDSR but slow) | None
- faceswaplab_upscaled_swapper_sharpen | Upscaled swapper sharpen | False
- faceswaplab_upscaled_swapper_fixcolor | Upscaled swapper color correction | False
- faceswaplab_upscaled_improved_mask | Use improved segmented mask (use pastenet to mask only the face) | True
- faceswaplab_upscaled_swapper_face_restorer | Upscaled swapper face restorer | None
- faceswaplab_upscaled_swapper_face_restorer_visibility | Upscaled swapper face restorer visibility | 1
- faceswaplab_upscaled_swapper_face_restorer_weight | Upscaled swapper face restorer weight (codeformer) | 1
- faceswaplab_upscaled_swapper_fthresh | Upscaled swapper fthresh (diff sensitivity) 10 = default behaviour. Low impact | 10
- faceswaplab_upscaled_swapper_erosion | Upscaled swapper mask erosion factor, 1 = default behaviour. The larger it is, the more blur is applied around the face. Too large and the facial change is no longer visible | 1
+There may be display bugs on some radio buttons that may not display the value (Codeformer might look disabled for instance). Check the logs to ensure that the transformation has been applied.

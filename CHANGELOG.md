@@ -1,3 +1,23 @@
+# 1.2.0 :
+
+This version changes quite a few things.
+
++ The upscaled inswapper options are now moved to each face unit. This makes it possible to fine-tune the settings for each face.
+
++ Upscaled inswapper configuration in sd now concerns default values in each unit's interface.
+
++ Pre- and post-inpainting is now possible for each face. Here too, default options are set in the main sd settings.
+
++ Codeformer is no longer the default in post-processing. Don't be surprised if you get bad results by default. You can set it to default in the application's global settings
+
+Bug fixes :
+
++ The problem of saving the grid should be solved.
++ The downscaling problem for inpainting should be solved.
++ Change model download logic and add checksum. This should prevent some bugs.
+
+In terms of the API, it is now possible to create a remote checkpoint and use it in units. See the example in client_api or the tests in the tests directory.
+
 # 1.1.2 :
 
 + Switch face checkpoint format from pkl to safetensors

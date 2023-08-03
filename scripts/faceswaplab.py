@@ -2,6 +2,7 @@ import importlib
 import traceback
 
 from scripts import faceswaplab_globals
+from scripts.configure import check_configuration
 from scripts.faceswaplab_api import faceswaplab_api
 from scripts.faceswaplab_postprocessing import upscaling
 from scripts.faceswaplab_settings import faceswaplab_settings
@@ -65,8 +66,8 @@ except:
 
 class FaceSwapScript(scripts.Script):
     def __init__(self) -> None:
-        logger.info(f"FaceSwapLab {VERSION_FLAG}")
         super().__init__()
+        check_configuration()
 
     @property
     def units_count(self) -> int:

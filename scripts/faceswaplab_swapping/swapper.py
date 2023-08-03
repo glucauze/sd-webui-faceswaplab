@@ -2,6 +2,7 @@ import copy
 import os
 from dataclasses import dataclass
 from pprint import pformat
+import traceback
 from typing import Any, Dict, Generator, List, Set, Tuple, Optional
 import tempfile
 from tqdm import tqdm
@@ -271,7 +272,9 @@ def getAnalysisModel() -> insightface.app.FaceAnalysis:
         logger.info("Load analysis model, will take some time. (> 30s)")
         # Initialize the analysis model with the specified name and providers
 
-        with tqdm(total=1, desc="Loading analysis model", unit="model") as pbar:
+        with tqdm(
+            total=1, desc="Loading analysis model (first time is slow)", unit="model"
+        ) as pbar:
             with capture_stdout() as captured:
                 model = insightface.app.FaceAnalysis(
                     name="buffalo_l",
@@ -291,14 +294,21 @@ def getAnalysisModel() -> insightface.app.FaceAnalysis:
 
 def is_sha1_matching(file_path: str, expected_sha1: str) -> bool:
     sha1_hash = hashlib.sha1(usedforsecurity=False)
-
-    with open(file_path, "rb") as file:
-        for byte_block in iter(lambda: file.read(4096), b""):
-            sha1_hash.update(byte_block)
-        if sha1_hash.hexdigest() == expected_sha1:
-            return True
-        else:
-            return False
+    try:
+        with open(file_path, "rb") as file:
+            for byte_block in iter(lambda: file.read(4096), b""):
+                sha1_hash.update(byte_block)
+            if sha1_hash.hexdigest() == expected_sha1:
+                return True
+            else:
+                return False
+    except Exception as e:
+        logger.error(
+            "Failed to check model hash, check the model is valid or has been downloaded adequately : %e",
+            e,
+        )
+        traceback.print_exc()
+        return False
 
 
 @lru_cache(maxsize=1)
@@ -334,8 +344,6 @@ def getFaceSwapModel(model_path: str) -> upscaled_inswapper.UpscaledINSwapper:
         logger.error(
             "Loading of swapping model failed, please check the requirements (On Windows, download and install Visual Studio. During the install, make sure to include the Python and C++ packages.)"
         )
-        import traceback
-
         traceback.print_exc()
         raise FaceModelException("Loading of swapping model failed")
 
@@ -379,6 +387,8 @@ def get_faces(
         # Sort the detected faces based on their x-coordinate of the bounding box
         return sorted(face, key=lambda x: x.bbox[0])
     except Exception as e:
+        logger.error("Failed to get faces %s", e)
+        traceback.print_exc()
         return []
 
 

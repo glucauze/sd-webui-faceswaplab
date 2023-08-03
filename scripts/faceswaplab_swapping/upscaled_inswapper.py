@@ -193,7 +193,7 @@ class UpscaledINSwapper(INSwapper):
 
                 if options:
                     logger.info("*" * 80)
-                    logger.info(f"Upscaled inswapper")
+                    logger.info(f"Inswapper")
 
                     if options.upscaler_name:
                         # Upscale original image
