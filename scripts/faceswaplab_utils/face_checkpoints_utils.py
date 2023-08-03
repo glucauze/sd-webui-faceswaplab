@@ -38,7 +38,7 @@ def sanitize_name(name: str) -> str:
 
 
 def build_face_checkpoint_and_save(
-    batch_files: List[str], name: str, overwrite: bool = False
+    images: List[PILImage], name: str, overwrite: bool = False, path: str = None
 ) -> PILImage:
     """
     Builds a face checkpoint using the provided image files, performs face swapping,
@@ -55,9 +55,9 @@ def build_face_checkpoint_and_save(
 
     try:
         name = sanitize_name(name)
-        batch_files = batch_files or []
-        logger.info("Build %s %s", name, [x for x in batch_files])
-        faces = swapper.get_faces_from_img_files(batch_files)
+        images = images or []
+        logger.info("Build %s with %s images", name, len(images))
+        faces = swapper.get_faces_from_img_files(images)
         blended_face = swapper.blend_faces(faces)
         preview_path = os.path.join(
             scripts.basedir(), "extensions", "sd-webui-faceswaplab", "references"
@@ -95,14 +95,17 @@ def build_face_checkpoint_and_save(
                 )
                 preview_image = result.image
 
-            file_path = os.path.join(get_checkpoint_path(), f"{name}.safetensors")
-            if not overwrite:
-                file_number = 1
-                while os.path.exists(file_path):
-                    file_path = os.path.join(
-                        get_checkpoint_path(), f"{name}_{file_number}.safetensors"
-                    )
-                    file_number += 1
+            if path:
+                file_path = path
+            else:
+                file_path = os.path.join(get_checkpoint_path(), f"{name}.safetensors")
+                if not overwrite:
+                    file_number = 1
+                    while os.path.exists(file_path):
+                        file_path = os.path.join(
+                            get_checkpoint_path(), f"{name}_{file_number}.safetensors"
+                        )
+                        file_number += 1
             save_face(filename=file_path, face=blended_face)
             preview_image.save(file_path + ".png")
             try:

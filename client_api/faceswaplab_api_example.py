@@ -1,7 +1,9 @@
+from typing import List
 import requests
 from api_utils import (
     FaceSwapUnit,
     InswappperOptions,
+    base64_to_safetensors,
     pil_to_base64,
     PostProcessingOptions,
     InpaintingWhen,
@@ -99,11 +101,29 @@ for img in response.pil_images:
 
 
 #############################
+# Build checkpoint
+
+source_images: List[str] = [
+    pil_to_base64("../references/man.png"),
+    pil_to_base64("../references/woman.png"),
+]
+
+result = requests.post(
+    url=f"{address}/faceswaplab/build",
+    json=source_images,
+    headers={"Content-Type": "application/json; charset=utf-8"},
+)
+
+base64_to_safetensors(result.json(), output_path="test.safetensors")
+
+#############################
 # FaceSwap with local safetensors
 
 # First face unit :
 unit1 = FaceSwapUnit(
-    source_face=safetensors_to_base64("test.safetensors"),
+    source_face=safetensors_to_base64(
+        "test.safetensors"
+    ),  # convert the checkpoint to base64
     faces_index=(0,),  # Replace first face
     swapping_options=InswappperOptions(
         face_restorer_name="CodeFormer",

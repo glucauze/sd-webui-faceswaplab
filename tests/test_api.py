@@ -2,22 +2,28 @@ from typing import List
 import pytest
 import requests
 import sys
+import tempfile
+import safetensors
 
 sys.path.append(".")
 
+import requests
 from client_api.api_utils import (
     FaceSwapUnit,
-    FaceSwapResponse,
-    PostProcessingOptions,
-    FaceSwapRequest,
-    base64_to_pil,
+    InswappperOptions,
     pil_to_base64,
+    PostProcessingOptions,
     InpaintingWhen,
-    FaceSwapCompareRequest,
+    InpaintingOptions,
+    FaceSwapRequest,
+    FaceSwapResponse,
     FaceSwapExtractRequest,
+    FaceSwapCompareRequest,
     FaceSwapExtractResponse,
     compare_faces,
-    InpaintingOptions,
+    base64_to_pil,
+    base64_to_safetensors,
+    safetensors_to_base64,
 )
 from PIL import Image
 
@@ -37,6 +43,13 @@ def face_swap_request() -> FaceSwapRequest:
         source_img=pil_to_base64("references/woman.png"),  # The face you want to use
         same_gender=True,
         faces_index=(0,),  # Replace first woman since same gender is on
+        swapping_options=InswappperOptions(
+            face_restorer_name="CodeFormer",
+            upscaler_name="LDSR",
+            improved_mask=True,
+            sharpen=True,
+            color_corrections=True,
+        ),
     )
 
     # Post-processing config
@@ -179,3 +192,86 @@ def test_faceswap_inpainting(face_swap_request: FaceSwapRequest) -> None:
     data = response.json()
     assert "images" in data
     assert "infos" in data
+
+
+def test_faceswap_checkpoint_building() -> None:
+    source_images: List[str] = [
+        pil_to_base64("references/man.png"),
+        pil_to_base64("references/woman.png"),
+    ]
+
+    response = requests.post(
+        url=f"{base_url}/faceswaplab/build",
+        json=source_images,
+        headers={"Content-Type": "application/json; charset=utf-8"},
+    )
+
+    assert response.status_code == 200
+
+    with tempfile.NamedTemporaryFile(delete=True) as temp_file:
+        base64_to_safetensors(response.json(), output_path=temp_file.name)
+        with safetensors.safe_open(temp_file.name, framework="pt") as f:
+            assert "age" in f.keys()
+            assert "gender" in f.keys()
+            assert "embedding" in f.keys()
+
+
+def test_faceswap_checkpoint_building_and_using() -> None:
+    source_images: List[str] = [
+        pil_to_base64("references/man.png"),
+    ]
+
+    response = requests.post(
+        url=f"{base_url}/faceswaplab/build",
+        json=source_images,
+        headers={"Content-Type": "application/json; charset=utf-8"},
+    )
+
+    assert response.status_code == 200
+
+    with tempfile.NamedTemporaryFile(delete=True) as temp_file:
+        base64_to_safetensors(response.json(), output_path=temp_file.name)
+        with safetensors.safe_open(temp_file.name, framework="pt") as f:
+            assert "age" in f.keys()
+            assert "gender" in f.keys()
+            assert "embedding" in f.keys()
+
+        # First face unit :
+        unit1 = FaceSwapUnit(
+            source_face=safetensors_to_base64(
+                temp_file.name
+            ),  # convert the checkpoint to base64
+            faces_index=(0,),  # Replace first face
+            swapping_options=InswappperOptions(
+                face_restorer_name="CodeFormer",
+                upscaler_name="LDSR",
+                improved_mask=True,
+                sharpen=True,
+                color_corrections=True,
+            ),
+        )
+
+        # Prepare the request
+        request = FaceSwapRequest(
+            image=pil_to_base64("tests/test_image.png"), units=[unit1]
+        )
+
+        # Face Swap
+        response = requests.post(
+            url=f"{base_url}/faceswaplab/swap_face",
+            data=request.json(),
+            headers={"Content-Type": "application/json; charset=utf-8"},
+        )
+        assert response.status_code == 200
+        fsr = FaceSwapResponse.parse_obj(response.json())
+        data = response.json()
+        assert "images" in data
+        assert "infos" in data
+
+        # First face is the man
+        assert (
+            compare_faces(
+                fsr.pil_images[0], Image.open("references/man.png"), base_url=base_url
+            )
+            > 0.5
+        )

@@ -1,3 +1,4 @@
+import tempfile
 from PIL import Image
 import numpy as np
 from fastapi import FastAPI
@@ -17,6 +18,9 @@ from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,
 )
 from client_api import api_utils
+from scripts.faceswaplab_utils.face_checkpoints_utils import (
+    build_face_checkpoint_and_save,
+)
 
 
 def encode_to_base64(image: Union[str, Image.Image, np.ndarray]) -> str:  # type: ignore
@@ -135,3 +139,23 @@ def faceswaplab_api(_: gr.Blocks, app: FastAPI) -> None:
         result_images = [encode_to_base64(img) for img in faces]
         response = api_utils.FaceSwapExtractResponse(images=result_images)
         return response
+
+    @app.post(
+        "/faceswaplab/build",
+        tags=["faceswaplab"],
+        description="Build a face checkpoint using base64 images, return base64 satetensors",
+    )
+    async def build(base64_images: List[str]) -> Optional[str]:
+        if len(base64_images) > 0:
+            pil_images = [base64_to_pil(img) for img in base64_images]
+            with tempfile.NamedTemporaryFile(
+                delete=True, suffix=".safetensors"
+            ) as temp_file:
+                build_face_checkpoint_and_save(
+                    images=pil_images,
+                    name="api_ckpt",
+                    overwrite=True,
+                    path=temp_file.name,
+                )
+                return api_utils.safetensors_to_base64(temp_file.name)
+        return None

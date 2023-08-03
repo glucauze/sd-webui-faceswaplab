@@ -153,9 +153,9 @@ def build_face_checkpoint_and_save(
         if not batch_files:
             logger.error("No face found")
             return None
-        filenames = [x.name for x in batch_files]
+        images = [Image.open(file.name) for file in batch_files]
         preview_image = face_checkpoints_utils.build_face_checkpoint_and_save(
-            filenames, name, overwrite=overwrite
+            images, name, overwrite=overwrite
         )
     except Exception as e:
         logger.error("Failed to build checkpoint %s", e)

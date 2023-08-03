@@ -468,12 +468,12 @@ def get_or_default(l: List[Any], index: int, default: Any) -> Any:
     return l[index] if index < len(l) else default
 
 
-def get_faces_from_img_files(files: List[str]) -> List[Optional[CV2ImgU8]]:
+def get_faces_from_img_files(images: List[PILImage]) -> List[Optional[CV2ImgU8]]:
     """
     Extracts faces from a list of image files.
 
     Args:
-        files (list): A list of file objects representing image files.
+        images (list): A list of PILImage objects representing image files.
 
     Returns:
         list: A list of detected faces.
@@ -482,9 +482,8 @@ def get_faces_from_img_files(files: List[str]) -> List[Optional[CV2ImgU8]]:
 
     faces = []
 
-    if len(files) > 0:
-        for file in files:
-            img = Image.open(file)  # Open the image file
+    if len(images) > 0:
+        for img in images:
             face = get_or_default(
                 get_faces(pil_to_cv2(img)), 0, None
             )  # Extract faces from the image

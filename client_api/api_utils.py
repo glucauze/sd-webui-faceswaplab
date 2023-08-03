@@ -187,7 +187,7 @@ class FaceSwapRequest(BaseModel):
         default=None,
     )
     units: List[FaceSwapUnit]
-    postprocessing: Optional[PostProcessingOptions]
+    postprocessing: Optional[PostProcessingOptions] = None
 
 
 class FaceSwapResponse(BaseModel):
