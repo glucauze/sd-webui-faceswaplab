@@ -210,6 +210,7 @@ class UpscaledINSwapper(INSwapper):
                     )
 
                     if options.improved_mask:
+                        logger.info("improved_mask")
                         mask = get_face_mask(aimg, bgr_fake)
                         bgr_fake = merge_images_with_mask(aimg, bgr_fake, mask)
 

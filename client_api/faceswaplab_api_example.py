@@ -18,6 +18,8 @@ from api_utils import (
 
 address = "http://127.0.0.1:7860"
 
+# This has been tested on Linux platforms. This might requires some minor adaptations for windows.
+
 
 #############################
 # FaceSwap

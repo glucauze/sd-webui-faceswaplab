@@ -70,7 +70,9 @@ def extract_faces(
         logger.error("You need at least one image file to extract")
         return []
     try:
-        postprocess_options = PostProcessingOptions(*components)  # type: ignore
+        postprocess_options = dataclasses_from_flat_list(
+            [PostProcessingOptions], components
+        ).pop()
         images = [
             Image.open(file.name) for file in files
         ]  # potentially greedy but Image.open is supposed to be lazy
