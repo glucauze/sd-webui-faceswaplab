@@ -180,6 +180,10 @@ The model stays loaded in VRAM and won't be unloaded after each use. As of now, 
 
 A change has also been made that could lead to some ripple effects. Previously, detection parameters such as det_size and det_thresh were automatically adjusted when a second model was loaded. This is no longer possible, so these parameters have been moved to the global settings to enable face detection.
 
+The `auto_det_size` option emulates the old behavior. It has no difference on CPU. BUT it will load the model twice if you use GPU. That means more VRAM comsumption and twice the initial load time. If you don't want that, you can use a det_size of 320, read below.
+
+If you enabled GPU and you are sure you avec a CUDA compatible card and the model keep using CPU provider, please checks that you have onnxruntime-gpu installed.
+
 ## Settings
 
 You can change the program's default behavior in your webui's global settings (FaceSwapLab section in settings). This is particularly useful if you want to have default options for inpainting or for post-processsing, for example.
@@ -191,6 +195,8 @@ There may be display bugs on some radio buttons that may not display the value (
 ### det_size and det_thresh (detection accuracy and performances)
 
 V1.2.1 : A change has been made that could lead to some ripple effects. Previously, detection parameters such as det_size and det_thresh were automatically adjusted when a second model was loaded. This is no longer possible, so these parameters have been moved to the global settings to enable face detection.
+
+The `auto_det_size` option emulates the old behavior. It has no difference on CPU. BUT it will load the model twice if you use GPU. That means more VRAM comsumption and twice the initial load time. If you don't want that, you can use a det_size of 320, read below.
 
 The `det_size` parameter defines the size of the detection area, controlling the spatial resolution at which faces are detected within an image. A larger detection size might capture more facial details, enhancing accuracy but potentially impacting processing speed. Conversely, the `det_thresh` parameter represents the detection threshold, serving as a sensitivity control for face detection. A higher threshold value leads to more conservative detection, capturing only the most prominent faces, while a lower threshold might detect more faces but could also result in more false positives.
 
