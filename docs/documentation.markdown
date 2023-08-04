@@ -5,6 +5,18 @@ permalink: /doc/
 toc: true
 ---
 
+## TLDR: I Just Want Good Results:
+
+1. Put a face in the reference.
+2. Select a face number.
+3. Select "Enable."
+4. Select "CodeFormer" in global Post-Processing.
+
+Once you're happy with some results but want to improve, the next steps are to:
+
++ Use advanced settings in face units (which are not as complex as they might seem, it's basically fine tuning post-processing for each faces).
++ Use pre/post inpainting to tweak the image a bit for more natural results.
+
 ## Main Interface
 
 Here is the interface for FaceSwap Lab. It is available in the form of an accordion in both img2img and txt2img.
@@ -60,7 +72,7 @@ The purpose of this feature is to enhance the quality of the face in the final i
 
 The upscaled inswapper is disabled by default. It can be enabled in the sd options. Understanding the various steps helps explain why results may be unsatisfactory and how to address this issue.
 
-+ **upscaler** : LDSR if None. The LDSR option generally gives the best results but at the expense of a lot of computational time. You should test other models to form an opinion. The 003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN model seems to give good results in a reasonable amount of time. It's not possible to disable upscaling, but it is possible to choose LANCZOS for speed if Codeformer is enabled in the upscaled inswapper. The result is generally satisfactory.
++ **upscaler** : LDSR if None. The LDSR option generally gives the best results but at the expense of a lot of computational time. You should test other models to form an opinion. The [003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN](https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN.pth) model seems to give good results in a reasonable amount of time. It's not possible to disable upscaling, but it is possible to choose LANCZOS for speed if Codeformer is enabled in the upscaled inswapper. The result is generally satisfactory. You can check [here for an upscaler database](https://upscale.wiki/wiki/Model_Database) and [here for some comparison](https://phhofm.github.io/upscale/favorites.html). It is a test and try process.
 + **restorer** : The face restorer to be used if necessary. Codeformer generally gives good results.
 + **sharpening** can provide more natural results, but it may also add artifacts. The same goes for **color correction**. By default, these options are set to False.
 + **improved mask:** The segmentation mask for the upscaled swapper is designed to avoid the square mask and prevent degradation of the non-face parts of the image. It is based on the Codeformer implementation. If "Use improved segmented mask (use pastenet to mask only the face)" and "upscaled inswapper" are checked in the settings, the mask will only cover the face, and will not be squared. However, depending on the image, this might introduce different types of problems such as artifacts on the border of the face.

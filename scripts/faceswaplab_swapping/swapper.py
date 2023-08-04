@@ -38,18 +38,22 @@ from scripts.faceswaplab_utils.models_utils import get_current_model
 from scripts.faceswaplab_utils.typing import CV2ImgU8, PILImage, Face
 from scripts.faceswaplab_inpainting.i2i_pp import img2img_diffusion
 from modules import shared
+import onnxruntime
 
+USE_GPU = (
+    getattr(shared.cmd_opts, "faceswaplab_gpu", False) and sys.platform != "darwin"
+)
 
-USE_GPU = getattr(shared.cmd_opts, "faceswaplab_gpu", False)
-
+providers = ["CPUExecutionProvider"]
 if USE_GPU and sys.platform != "darwin":
-    providers = [
-        "TensorrtExecutionProvider",
-        "CUDAExecutionProvider",
-        "CPUExecutionProvider",
-    ]
-else:
-    providers = ["CPUExecutionProvider"]
+    if "CUDAExecutionProvider" in onnxruntime.get_available_providers():
+        providers = ["CUDAExecutionProvider"]
+    else:
+        logger.error(
+            "CUDAExecutionProvider not found in onnxruntime.available_providers : %s, use CPU instead. Check onnxruntime-gpu is installed.",
+            onnxruntime.get_available_providers(),
+        )
+        USE_GPU = False
 
 
 def cosine_similarity_face(face1: Face, face2: Face) -> float:
@@ -268,7 +272,21 @@ def capture_stdout() -> Generator[StringIO, None, None]:
         sys.stdout = original_stdout  # Type: ignore
 
 
+# On GPU we can keep a non prepared model in ram and deepcopy it every time det_size change (old behaviour)
 @lru_cache(maxsize=1)
+def get_cpu_analysis() -> insightface.app.FaceAnalysis:
+    return insightface.app.FaceAnalysis(
+        name="buffalo_l",
+        providers=providers,
+        root=faceswaplab_globals.ANALYZER_DIR,
+    )
+
+
+# FIXME : This function is way more complicated than it could be.
+# It is done that way to preserve the original behavior with CPU.
+# Most users don't reed the doc, so we need to keep the features as close as possible
+# to original behavior.
+@lru_cache(maxsize=3)
 def getAnalysisModel(
     det_size: Tuple[int, int] = (640, 640), det_thresh: float = 0.5
 ) -> insightface.app.FaceAnalysis:
@@ -291,14 +309,20 @@ def getAnalysisModel(
             total=1, desc="Loading analysis model (first time is slow)", unit="model"
         ) as pbar:
             with capture_stdout() as captured:
-                model = insightface.app.FaceAnalysis(
-                    name="buffalo_l",
-                    providers=providers,
-                    root=faceswaplab_globals.ANALYZER_DIR,
-                )
+                if USE_GPU:
+                    model = insightface.app.FaceAnalysis(
+                        name="buffalo_l",
+                        providers=providers,
+                        root=faceswaplab_globals.ANALYZER_DIR,
+                    )
 
-                # Prepare the analysis model for face detection with the specified detection size
-                model.prepare(ctx_id=0, det_thresh=det_thresh, det_size=det_size)
+                    # Prepare the analysis model for face detection with the specified detection size
+                    model.prepare(ctx_id=0, det_thresh=det_thresh, det_size=det_size)
+                else:
+                    # This is a hacky way to speed up loading for gpu only
+                    model = copy.deepcopy(get_cpu_analysis())
+                    model.prepare(ctx_id=0, det_thresh=det_thresh, det_size=det_size)
+
             pbar.update(1)
         logger.info("%s", pformat(captured.getvalue()))
 
@@ -369,6 +393,7 @@ def getFaceSwapModel(model_path: str) -> upscaled_inswapper.UpscaledINSwapper:
 def get_faces(
     img_data: CV2ImgU8,
     det_thresh: Optional[float] = None,
+    det_size: Tuple[int, int] = (640, 640),
 ) -> List[Face]:
     """
     Detects and retrieves faces from an image using an analysis model.
@@ -385,15 +410,36 @@ def get_faces(
     if det_thresh is None:
         det_thresh = opts.data.get("faceswaplab_detection_threshold", 0.5)
 
-    det_size = opts.data.get("faceswaplab_det_size", 640)
-    face_analyser = getAnalysisModel((det_size, det_size), det_thresh)
+    auto_det_size = opts.data.get("faceswaplab_auto_det_size", True)
+    if not auto_det_size:
+        x = opts.data.get("faceswaplab_det_size", 640)
+        det_size = (x, x)
+
+    face_analyser = getAnalysisModel(det_size, det_thresh)
 
     # Get the detected faces from the image using the analysis model
-    face = face_analyser.get(img_data)
+    faces = face_analyser.get(img_data)
+
+    # If no faces are detected and the detection size is larger than 320x320,
+    # recursively call the function with a smaller detection size
+    if len(faces) == 0:
+        if auto_det_size:
+            if det_size[0] > 320 and det_size[1] > 320:
+                det_size_half = (det_size[0] // 2, det_size[1] // 2)
+                return get_faces(
+                    img_data, det_size=det_size_half, det_thresh=det_thresh
+                )
+
+        # If no faces are detected print a warning to user about change in detection
+        else:
+            if det_size[0] > 320:
+                logger.warning(
+                    "No faces detected, you might want to play with det_size by reducing it (in sd global settings). Lower (320) means more detection but less precise. Or activate auto-det-size."
+                )
 
     try:
         # Sort the detected faces based on their x-coordinate of the bounding box
-        return sorted(face, key=lambda x: x.bbox[0])
+        return sorted(faces, key=lambda x: x.bbox[0])
     except Exception as e:
         logger.error("Failed to get faces %s", e)
         traceback.print_exc()

@@ -49,6 +49,17 @@ def on_ui_settings() -> None:
     )
 
     shared.opts.add_option(
+        "faceswaplab_auto_det_size",
+        shared.OptionInfo(
+            True,
+            "Auto det_size : Will load model twice and test faces on each if needed (old behaviour). Takes more VRAM. Precedence over fixed det_size",
+            gr.Checkbox,
+            {"interactive": True},
+            section=section,
+        ),
+    )
+
+    shared.opts.add_option(
         "faceswaplab_detection_threshold",
         shared.OptionInfo(
             0.5,
