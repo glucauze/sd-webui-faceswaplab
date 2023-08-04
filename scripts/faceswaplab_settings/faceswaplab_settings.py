@@ -38,10 +38,21 @@ def on_ui_settings() -> None:
     )
 
     shared.opts.add_option(
+        "faceswaplab_det_size",
+        shared.OptionInfo(
+            640,
+            "det_size : Size of the detection area for face analysis. Higher values may improve quality but reduce speed. Low value may improve detection of very large face.",
+            gr.Slider,
+            {"minimum": 320, "maximum": 640, "step": 320},
+            section=section,
+        ),
+    )
+
+    shared.opts.add_option(
         "faceswaplab_detection_threshold",
         shared.OptionInfo(
             0.5,
-            "Face Detection threshold",
+            "det_thresh : Face Detection threshold",
             gr.Slider,
             {"minimum": 0.1, "maximum": 0.99, "step": 0.001},
             section=section,

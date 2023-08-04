@@ -2,9 +2,18 @@ import launch
 import os
 import pkg_resources
 import sys
+from modules import shared
 
+use_gpu = getattr(shared.cmd_opts, "faceswaplab_gpu", False)
 
-req_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "requirements.txt")
+if use_gpu and sys.platform != "darwin":
+    req_file = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "requirements-gpu.txt"
+    )
+else:
+    req_file = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "requirements.txt"
+    )
 
 print("Checking faceswaplab requirements")
 with open(req_file) as file:

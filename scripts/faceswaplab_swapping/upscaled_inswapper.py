@@ -262,7 +262,6 @@ class UpscaledINSwapper(INSwapper):
                 )
                 img_white[img_white > 20] = 255
                 fthresh = 10
-                print("fthresh", fthresh)
                 fake_diff[fake_diff < fthresh] = 0
                 fake_diff[fake_diff >= fthresh] = 255
                 img_mask = img_white
