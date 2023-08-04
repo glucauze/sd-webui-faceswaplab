@@ -40,9 +40,9 @@ from scripts.faceswaplab_inpainting.i2i_pp import img2img_diffusion
 from modules import shared
 
 
-use_gpu = getattr(shared.cmd_opts, "faceswaplab_gpu", False)
+USE_GPU = getattr(shared.cmd_opts, "faceswaplab_gpu", False)
 
-if use_gpu and sys.platform != "darwin":
+if USE_GPU and sys.platform != "darwin":
     providers = [
         "TensorrtExecutionProvider",
         "CUDAExecutionProvider",
@@ -283,7 +283,7 @@ def getAnalysisModel(
             os.makedirs(faceswaplab_globals.ANALYZER_DIR)
 
         logger.info(
-            f"Load analysis model det_size={det_size}, det_thresh={det_thresh}, will take some time. (> 30s)"
+            f"Load analysis model det_size={det_size}, det_thresh={det_thresh}, gpu={USE_GPU}, providers = {providers}, will take some time. (> 30s)"
         )
         # Initialize the analysis model with the specified name and providers
 

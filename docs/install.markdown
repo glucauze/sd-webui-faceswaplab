@@ -8,6 +8,8 @@ permalink: /install/
 
 The extension runs mainly on the CPU to avoid the use of VRAM. However, it is recommended to follow the specifications recommended by sd/a1111 with regard to prerequisites. At the time of writing, a version of python lower than 11 is preferable (even if it works with python 3.11, model loading and performance may fall short of expectations).
 
+Older versions of gradio don’t work well with the extension. See this bug report : https://github.com/glucauze/sd-webui-faceswaplab/issues/5. It has been tested on 3.32.0
+
 ### Windows-User : Visual Studio ! Don't neglect this !
 
 Before beginning the installation process, if you are using Windows, you need to install this requirement:

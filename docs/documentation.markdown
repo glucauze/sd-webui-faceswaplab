@@ -2,9 +2,10 @@
 layout: page
 title: Documentation
 permalink: /doc/
+toc: true
 ---
 
-# Main Interface
+## Main Interface
 
 Here is the interface for FaceSwap Lab. It is available in the form of an accordion in both img2img and txt2img.
 
@@ -12,7 +13,7 @@ You can configure several units, each allowing you to replace a face. Here, 3 un
 
 ![](/assets/images/doc_mi.png)
 
-#### Face Unit
+### Face Unit
 
 The first thing to do is to activate the unit with **'enable'** if you want to use it.
 
@@ -25,7 +26,7 @@ Here are the main options for configuring a unit:
 
 **You must always have at least one reference face OR a checkpoint. If both are selected, the checkpoint will be used and the reference ignored.**
 
-#### Similarity
+### Similarity
 
 Always check for errors in the SD console. In particular, the absence of a reference face or a checkpoint can trigger errors.
 
@@ -37,7 +38,7 @@ Always check for errors in the SD console. In particular, the absence of a refer
     + **Same gender:** the gender of the source face will be determined and only faces of the same gender will be considered.
     + **Sort by size:** faces will be sorted from largest to smallest.
 
-#### Pre-Inpainting :
+### Pre-Inpainting
 
 This part is applied BEFORE face swapping and only on matching faces.
 
@@ -47,7 +48,7 @@ You can use a specific model for the replacement, different from the model used 
 
 For inpainting to be active, denoising must be greater than 0 and the Inpainting When option must be set to:
 
-#### Post-Processing & Advanced Masks Options : (upscaled inswapper)
+### Post-Processing & Advanced Masks Options : (upscaled inswapper)
 
 By default, these settings are disabled, but you can use the global settings to modify the default behavior. These options are called "Default Upscaled swapper..."
 
@@ -65,7 +66,7 @@ The upscaled inswapper is disabled by default. It can be enabled in the sd optio
 + **improved mask:** The segmentation mask for the upscaled swapper is designed to avoid the square mask and prevent degradation of the non-face parts of the image. It is based on the Codeformer implementation. If "Use improved segmented mask (use pastenet to mask only the face)" and "upscaled inswapper" are checked in the settings, the mask will only cover the face, and will not be squared. However, depending on the image, this might introduce different types of problems such as artifacts on the border of the face.
 + **erosion factor:** it is possible to adjust the mask erosion parameters using the erosion settings. The higher this setting is, the more the mask is reduced.
 
-#### Post-Inpainting :
+### Post-Inpainting
 
 This part is applied AFTER face swapping and only on matching faces.
 
@@ -122,7 +123,7 @@ The checkpoint can then be used in the main interface (use refresh button)
 
 
 
-## Processing order:
+## Processing order
 
 The extension is activated after all other extensions have been processed.  During the execution, several steps take place.
 
@@ -157,6 +158,16 @@ The API is documented in the FaceSwapLab tags in the http://localhost:7860/docs 
 You don't have to use the api_utils.py file and pydantic types, but it can save time.
 
 
+## Experimental GPU support
+
+In Version 1.2.1, the ability to use the GPU has been added, a setting that can be configured in SD at startup. Currently, this feature is only supported on Windows and Linux, as the necessary dependencies for Mac have not been included.
+
+The `--faceswaplab_gpu` option in SD can be added to the args in webui-user.sh or webui-user.bat.
+
+The model stays loaded in VRAM and won't be unloaded after each use. As of now, I don't know a straightforward way to handle this, so it will occupy space continuously. If your system's VRAM is limited, enabling this option might not be advisable.
+
+A change has also been made that could lead to some ripple effects. Previously, detection parameters such as det_size and det_thresh were automatically adjusted when a second model was loaded. This is no longer possible, so these parameters have been moved to the global settings to enable face detection.
+
 ## Settings
 
 You can change the program's default behavior in your webui's global settings (FaceSwapLab section in settings). This is particularly useful if you want to have default options for inpainting or for post-processsing, for example.
@@ -164,3 +175,11 @@ You can change the program's default behavior in your webui's global settings (F
 The interface must be restarted to take the changes into account. Sometimes you have to reboot the entire webui server.
 
 There may be display bugs on some radio buttons that may not display the value (Codeformer might look disabled for instance). Check the logs to ensure that the transformation has been applied.
+
+### det_size and det_thresh (detection accuracy and performances)
+
+V1.2.1 : A change has been made that could lead to some ripple effects. Previously, detection parameters such as det_size and det_thresh were automatically adjusted when a second model was loaded. This is no longer possible, so these parameters have been moved to the global settings to enable face detection.
+
+The `det_size` parameter defines the size of the detection area, controlling the spatial resolution at which faces are detected within an image. A larger detection size might capture more facial details, enhancing accuracy but potentially impacting processing speed. Conversely, the `det_thresh` parameter represents the detection threshold, serving as a sensitivity control for face detection. A higher threshold value leads to more conservative detection, capturing only the most prominent faces, while a lower threshold might detect more faces but could also result in more false positives.
+
+It has been observed that a det_size value of 320 is more effective at detecting large faces. If there are issues with detecting large faces, switching to this value is recommended, though it might result in a loss of some quality.

@@ -195,7 +195,7 @@ class UpscaledINSwapper(INSwapper):
                     logger.info("*" * 80)
                     logger.info(f"Inswapper")
 
-                    if options.upscaler_name:
+                    if options.upscaler_name and options.upscaler_name != "None":
                         # Upscale original image
                         k = 4
                         aimg, M = face_align.norm_crop2(
