@@ -172,6 +172,8 @@ You don't have to use the api_utils.py file and pydantic types, but it can save 
 
 ## Experimental GPU support
 
+You need a sufficiently recent version of your SD environment. Using the GPU has a lot of little drawbacks to understand, but the performance gain is substantial.
+
 In Version 1.2.1, the ability to use the GPU has been added, a setting that can be configured in SD at startup. Currently, this feature is only supported on Windows and Linux, as the necessary dependencies for Mac have not been included.
 
 The `--faceswaplab_gpu` option in SD can be added to the args in webui-user.sh or webui-user.bat.
@@ -183,6 +185,16 @@ A change has also been made that could lead to some ripple effects. Previously, 
 The `auto_det_size` option emulates the old behavior. It has no difference on CPU. BUT it will load the model twice if you use GPU. That means more VRAM comsumption and twice the initial load time. If you don't want that, you can use a det_size of 320, read below.
 
 If you enabled GPU and you are sure you avec a CUDA compatible card and the model keep using CPU provider, please checks that you have onnxruntime-gpu installed.
+
+### SD.NEXT and GPU
+
+Please read carefully.
+
+Using the GPU requires the use of the onnxruntime-gpu>=1.15.0 dependency. For the moment, this conflicts with older SD.Next dependencies (tensorflow, which uses numpy and potentially rembg). You will need to check numpy>=1.24.2 and tensorflow>=2.13.0.
+
+You should therefore be able to debug a little before activating the option. If you don't feel up to it, it's best not to use it.
+
+The first time the swap is used, the program will continue to use the CPU, but will offer to install the GPU. You will then need to restart. This is due to the optimizations made by SD.Next to the installation scripts.
 
 ## Settings
 

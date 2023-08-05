@@ -9,7 +9,6 @@ from tqdm import tqdm
 import sys
 from io import StringIO
 from contextlib import contextmanager
-import hashlib
 
 import cv2
 import insightface
@@ -40,20 +39,44 @@ from scripts.faceswaplab_inpainting.i2i_pp import img2img_diffusion
 from modules import shared
 import onnxruntime
 
-USE_GPU = (
-    getattr(shared.cmd_opts, "faceswaplab_gpu", False) and sys.platform != "darwin"
-)
 
-providers = ["CPUExecutionProvider"]
-if USE_GPU and sys.platform != "darwin":
-    if "CUDAExecutionProvider" in onnxruntime.get_available_providers():
-        providers = ["CUDAExecutionProvider"]
-    else:
-        logger.error(
-            "CUDAExecutionProvider not found in onnxruntime.available_providers : %s, use CPU instead. Check onnxruntime-gpu is installed.",
-            onnxruntime.get_available_providers(),
-        )
-        USE_GPU = False
+def use_gpu() -> bool:
+    return (
+        getattr(shared.cmd_opts, "faceswaplab_gpu", False)
+        or opts.data.get("faceswaplab_use_gpu", False)
+    ) and sys.platform != "darwin"
+
+
+@lru_cache
+def force_install_gpu_providers() -> None:
+    # Ugly Ugly hack due to SDNEXT :
+    from scripts.configure import check_install
+
+    logger.warning("Try to reinstall gpu dependencies")
+    check_install()
+    logger.warning("IF onnxruntime-gpu has been installed successfully, RESTART")
+    logger.warning(
+        "On SD.NEXT/vladmantic you will also need to check numpy>=1.24.2 and tensorflow>=2.13.0"
+    )
+
+
+def get_providers() -> List[str]:
+    providers = ["CPUExecutionProvider"]
+    if use_gpu():
+        if "CUDAExecutionProvider" in onnxruntime.get_available_providers():
+            providers = ["CUDAExecutionProvider"]
+        else:
+            logger.error(
+                "CUDAExecutionProvider not found in onnxruntime.available_providers : %s, use CPU instead. Check onnxruntime-gpu is installed.",
+                onnxruntime.get_available_providers(),
+            )
+            force_install_gpu_providers()
+
+    return providers
+
+
+def is_cpu_provider() -> bool:
+    return get_providers() == ["CPUExecutionProvider"]
 
 
 def cosine_similarity_face(face1: Face, face2: Face) -> float:
@@ -281,20 +304,6 @@ def capture_stdout() -> Generator[StringIO, None, None]:
         sys.stdout = original_stdout  # Type: ignore
 
 
-# On GPU we can keep a non prepared model in ram and deepcopy it every time det_size change (old behaviour)
-@lru_cache(maxsize=1)
-def get_cpu_analysis() -> insightface.app.FaceAnalysis:
-    return insightface.app.FaceAnalysis(
-        name="buffalo_l",
-        providers=providers,
-        root=faceswaplab_globals.ANALYZER_DIR,
-    )
-
-
-# FIXME : This function is way more complicated than it could be.
-# It is done that way to preserve the original behavior with CPU.
-# Most users don't reed the doc, so we need to keep the features as close as possible
-# to original behavior.
 @lru_cache(maxsize=3)
 def getAnalysisModel(
     det_size: Tuple[int, int] = (640, 640), det_thresh: float = 0.5
@@ -309,29 +318,26 @@ def getAnalysisModel(
         if not os.path.exists(faceswaplab_globals.ANALYZER_DIR):
             os.makedirs(faceswaplab_globals.ANALYZER_DIR)
 
+        providers = get_providers()
         logger.info(
-            f"Load analysis model det_size={det_size}, det_thresh={det_thresh}, gpu={USE_GPU}, providers = {providers}, will take some time. (> 30s)"
+            f"Load analysis model det_size={det_size}, det_thresh={det_thresh}, providers = {providers}, will take some time. (> 30s)"
         )
         # Initialize the analysis model with the specified name and providers
 
         with tqdm(
-            total=1, desc="Loading analysis model (first time is slow)", unit="model"
+            total=1,
+            desc=f"Loading {det_size} analysis model (first time is slow)",
+            unit="model",
         ) as pbar:
             with capture_stdout() as captured:
-                if USE_GPU:
-                    model = insightface.app.FaceAnalysis(
-                        name="buffalo_l",
-                        providers=providers,
-                        root=faceswaplab_globals.ANALYZER_DIR,
-                    )
+                model = insightface.app.FaceAnalysis(
+                    name="buffalo_l",
+                    providers=providers,
+                    root=faceswaplab_globals.ANALYZER_DIR,
+                )
 
-                    # Prepare the analysis model for face detection with the specified detection size
-                    model.prepare(ctx_id=0, det_thresh=det_thresh, det_size=det_size)
-                else:
-                    # This is a hacky way to speed up loading for gpu only
-                    model = copy.deepcopy(get_cpu_analysis())
-                    model.prepare(ctx_id=0, det_thresh=det_thresh, det_size=det_size)
-
+                # Prepare the analysis model for face detection with the specified detection size
+                model.prepare(ctx_id=0, det_thresh=det_thresh, det_size=det_size)
             pbar.update(1)
         logger.info("%s", pformat(captured.getvalue()))
 
@@ -341,25 +347,6 @@ def getAnalysisModel(
             "Loading of swapping model failed, please check the requirements (On Windows, download and install Visual Studio. During the install, make sure to include the Python and C++ packages.)"
         )
         raise FaceModelException("Loading of analysis model failed")
-
-
-def is_sha1_matching(file_path: str, expected_sha1: str) -> bool:
-    sha1_hash = hashlib.sha1(usedforsecurity=False)
-    try:
-        with open(file_path, "rb") as file:
-            for byte_block in iter(lambda: file.read(4096), b""):
-                sha1_hash.update(byte_block)
-            if sha1_hash.hexdigest() == expected_sha1:
-                return True
-            else:
-                return False
-    except Exception as e:
-        logger.error(
-            "Failed to check model hash, check the model is valid or has been downloaded adequately : %e",
-            e,
-        )
-        traceback.print_exc()
-        return False
 
 
 @lru_cache(maxsize=1)
@@ -374,14 +361,7 @@ def getFaceSwapModel(model_path: str) -> upscaled_inswapper.UpscaledINSwapper:
         insightface.model_zoo.FaceModel: The face swap model.
     """
     try:
-        expected_sha1 = "17a64851eaefd55ea597ee41e5c18409754244c5"
-        if not is_sha1_matching(model_path, expected_sha1):
-            logger.error(
-                "Suspicious sha1 for model %s, check the model is valid or has been downloaded adequately. Should be %s",
-                model_path,
-                expected_sha1,
-            )
-
+        providers = get_providers()
         with tqdm(total=1, desc="Loading swap model", unit="model") as pbar:
             with capture_stdout() as captured:
                 model = upscaled_inswapper.UpscaledINSwapper(

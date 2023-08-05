@@ -20,6 +20,12 @@ Before beginning the installation process, if you are using Windows, you need to
 
 3. OR if you don't want to install either the full Visual Studio suite or the VS C++ Build Tools: Follow the instructions provided in section VIII of the documentation.
 
+## SD.Next / Vladmantic
+
+SD.Next loading optimizations in relation to extension installation scripts can sometimes cause problems. This is particularly the case if you copy the script without installing it via the interface.
+
+If you get an error after startup, try restarting the server.
+
 ## Manual Install
 
 To install the extension, follow the steps below:
