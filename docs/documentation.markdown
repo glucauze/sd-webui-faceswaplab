@@ -176,7 +176,7 @@ You need a sufficiently recent version of your SD environment. Using the GPU has
 
 In Version 1.2.1, the ability to use the GPU has been added, a setting that can be configured in SD at startup. Currently, this feature is only supported on Windows and Linux, as the necessary dependencies for Mac have not been included.
 
-The `--faceswaplab_gpu` option in SD can be added to the args in webui-user.sh or webui-user.bat.
+The `--faceswaplab_gpu` option in SD can be added to the args in webui-user.sh or webui-user.bat. **There is also an option in SD settings**.
 
 The model stays loaded in VRAM and won't be unloaded after each use. As of now, I don't know a straightforward way to handle this, so it will occupy space continuously. If your system's VRAM is limited, enabling this option might not be advisable.
 
@@ -195,6 +195,16 @@ Using the GPU requires the use of the onnxruntime-gpu>=1.15.0 dependency. For th
 You should therefore be able to debug a little before activating the option. If you don't feel up to it, it's best not to use it.
 
 The first time the swap is used, the program will continue to use the CPU, but will offer to install the GPU. You will then need to restart. This is due to the optimizations made by SD.Next to the installation scripts.
+
+For SD.Next, the best is to install dependencies manually :
+
+on windows :
+
+```shell
+.\venv\Scripts\activate
+cd .\extensions\sd-webui-faceswaplab\
+ pip install .\requirements-gpu.txt
+```
 
 ## Settings
 

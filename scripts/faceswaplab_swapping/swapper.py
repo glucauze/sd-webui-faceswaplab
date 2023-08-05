@@ -50,14 +50,19 @@ def use_gpu() -> bool:
 @lru_cache
 def force_install_gpu_providers() -> None:
     # Ugly Ugly hack due to SDNEXT :
-    from scripts.configure import check_install
+    try:
+        from scripts.configure import check_install
 
-    logger.warning("Try to reinstall gpu dependencies")
-    check_install()
-    logger.warning("IF onnxruntime-gpu has been installed successfully, RESTART")
-    logger.warning(
-        "On SD.NEXT/vladmantic you will also need to check numpy>=1.24.2 and tensorflow>=2.13.0"
-    )
+        logger.warning("Try to reinstall gpu dependencies")
+        check_install()
+        logger.warning("IF onnxruntime-gpu has been installed successfully, RESTART")
+        logger.warning(
+            "On SD.NEXT/vladmantic you will also need to check numpy>=1.24.2 and tensorflow>=2.13.0"
+        )
+    except:
+        logger.error(
+            "Reinstall has failed (which is normal on windows), please install requirements-gpu.txt manually to enable gpu."
+        )
 
 
 def get_providers() -> List[str]:
