@@ -216,12 +216,10 @@ def batch_process(
         ]
         postprocess_options = classes[-1]
 
-        images = [
-            Image.open(file.name) for file in files
-        ]  # potentially greedy but Image.open is supposed to be lazy
+        images_paths = [file.name for file in files]
 
         return swapper.batch_process(
-            images,
+            images_paths,
             save_path=save_path,
             units=units,
             postprocess_options=postprocess_options,
