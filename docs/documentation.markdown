@@ -2,9 +2,22 @@
 layout: page
 title: Documentation
 permalink: /doc/
+toc: true
 ---
 
-# Main Interface
+## TLDR: I Just Want Good Results:
+
+1. Put a face in the reference.
+2. Select a face number.
+3. Select "Enable."
+4. Select "CodeFormer" in global Post-Processing.
+
+Once you're happy with some results but want to improve, the next steps are to:
+
++ Use advanced settings in face units (which are not as complex as they might seem, it's basically fine tuning post-processing for each faces).
++ Use pre/post inpainting to tweak the image a bit for more natural results.
+
+## Main Interface
 
 Here is the interface for FaceSwap Lab. It is available in the form of an accordion in both img2img and txt2img.
 
@@ -12,7 +25,7 @@ You can configure several units, each allowing you to replace a face. Here, 3 un
 
 ![](/assets/images/doc_mi.png)
 
-#### Face Unit
+### Face Unit
 
 The first thing to do is to activate the unit with **'enable'** if you want to use it.
 
@@ -25,7 +38,7 @@ Here are the main options for configuring a unit:
 
 **You must always have at least one reference face OR a checkpoint. If both are selected, the checkpoint will be used and the reference ignored.**
 
-#### Similarity
+### Similarity
 
 Always check for errors in the SD console. In particular, the absence of a reference face or a checkpoint can trigger errors.
 
@@ -37,7 +50,7 @@ Always check for errors in the SD console. In particular, the absence of a refer
     + **Same gender:** the gender of the source face will be determined and only faces of the same gender will be considered.
     + **Sort by size:** faces will be sorted from largest to smallest.
 
-#### Pre-Inpainting :
+### Pre-Inpainting
 
 This part is applied BEFORE face swapping and only on matching faces.
 
@@ -47,7 +60,7 @@ You can use a specific model for the replacement, different from the model used 
 
 For inpainting to be active, denoising must be greater than 0 and the Inpainting When option must be set to:
 
-#### Post-Processing & Advanced Masks Options : (upscaled inswapper)
+### Post-Processing & Advanced Masks Options : (upscaled inswapper)
 
 By default, these settings are disabled, but you can use the global settings to modify the default behavior. These options are called "Default Upscaled swapper..."
 
@@ -59,13 +72,13 @@ The purpose of this feature is to enhance the quality of the face in the final i
 
 The upscaled inswapper is disabled by default. It can be enabled in the sd options. Understanding the various steps helps explain why results may be unsatisfactory and how to address this issue.
 
-+ **upscaler** : LDSR if None. The LDSR option generally gives the best results but at the expense of a lot of computational time. You should test other models to form an opinion. The 003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN model seems to give good results in a reasonable amount of time. It's not possible to disable upscaling, but it is possible to choose LANCZOS for speed if Codeformer is enabled in the upscaled inswapper. The result is generally satisfactory.
++ **upscaler** : LDSR if None. The LDSR option generally gives the best results but at the expense of a lot of computational time. You should test other models to form an opinion. The [003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN](https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN.pth) model seems to give good results in a reasonable amount of time. It's not possible to disable upscaling, but it is possible to choose LANCZOS for speed if Codeformer is enabled in the upscaled inswapper. The result is generally satisfactory. You can check [here for an upscaler database](https://upscale.wiki/wiki/Model_Database) and [here for some comparison](https://phhofm.github.io/upscale/favorites.html). It is a test and try process.
 + **restorer** : The face restorer to be used if necessary. Codeformer generally gives good results.
 + **sharpening** can provide more natural results, but it may also add artifacts. The same goes for **color correction**. By default, these options are set to False.
 + **improved mask:** The segmentation mask for the upscaled swapper is designed to avoid the square mask and prevent degradation of the non-face parts of the image. It is based on the Codeformer implementation. If "Use improved segmented mask (use pastenet to mask only the face)" and "upscaled inswapper" are checked in the settings, the mask will only cover the face, and will not be squared. However, depending on the image, this might introduce different types of problems such as artifacts on the border of the face.
 + **erosion factor:** it is possible to adjust the mask erosion parameters using the erosion settings. The higher this setting is, the more the mask is reduced.
 
-#### Post-Inpainting :
+### Post-Inpainting
 
 This part is applied AFTER face swapping and only on matching faces.
 
@@ -122,7 +135,7 @@ The checkpoint can then be used in the main interface (use refresh button)
 
 
 
-## Processing order:
+## Processing order
 
 The extension is activated after all other extensions have been processed.  During the execution, several steps take place.
 
@@ -157,6 +170,42 @@ The API is documented in the FaceSwapLab tags in the http://localhost:7860/docs 
 You don't have to use the api_utils.py file and pydantic types, but it can save time.
 
 
+## Experimental GPU support
+
+You need a sufficiently recent version of your SD environment. Using the GPU has a lot of little drawbacks to understand, but the performance gain is substantial.
+
+In Version 1.2.1, the ability to use the GPU has been added, a setting that can be configured in SD at startup. Currently, this feature is only supported on Windows and Linux, as the necessary dependencies for Mac have not been included.
+
+The `--faceswaplab_gpu` option in SD can be added to the args in webui-user.sh or webui-user.bat. **There is also an option in SD settings**.
+
+The model stays loaded in VRAM and won't be unloaded after each use. As of now, I don't know a straightforward way to handle this, so it will occupy space continuously. If your system's VRAM is limited, enabling this option might not be advisable.
+
+A change has also been made that could lead to some ripple effects. Previously, detection parameters such as det_size and det_thresh were automatically adjusted when a second model was loaded. This is no longer possible, so these parameters have been moved to the global settings to enable face detection.
+
+The `auto_det_size` option emulates the old behavior. It has no difference on CPU. BUT it will load the model twice if you use GPU. That means more VRAM comsumption and twice the initial load time. If you don't want that, you can use a det_size of 320, read below.
+
+If you enabled GPU and you are sure you avec a CUDA compatible card and the model keep using CPU provider, please checks that you have onnxruntime-gpu installed.
+
+### SD.NEXT and GPU
+
+Please read carefully.
+
+Using the GPU requires the use of the onnxruntime-gpu>=1.15.0 dependency. For the moment, this conflicts with older SD.Next dependencies (tensorflow, which uses numpy and potentially rembg). You will need to check numpy>=1.24.2 and tensorflow>=2.13.0.
+
+You should therefore be able to debug a little before activating the option. If you don't feel up to it, it's best not to use it.
+
+The first time the swap is used, the program will continue to use the CPU, but will offer to install the GPU. You will then need to restart. This is due to the optimizations made by SD.Next to the installation scripts.
+
+For SD.Next, the best is to install dependencies manually :
+
+on windows :
+
+```shell
+.\venv\Scripts\activate
+cd .\extensions\sd-webui-faceswaplab\
+ pip install .\requirements-gpu.txt
+```
+
 ## Settings
 
 You can change the program's default behavior in your webui's global settings (FaceSwapLab section in settings). This is particularly useful if you want to have default options for inpainting or for post-processsing, for example.
@@ -164,3 +213,13 @@ You can change the program's default behavior in your webui's global settings (F
 The interface must be restarted to take the changes into account. Sometimes you have to reboot the entire webui server.
 
 There may be display bugs on some radio buttons that may not display the value (Codeformer might look disabled for instance). Check the logs to ensure that the transformation has been applied.
+
+### det_size and det_thresh (detection accuracy and performances)
+
+V1.2.1 : A change has been made that could lead to some ripple effects. Previously, detection parameters such as det_size and det_thresh were automatically adjusted when a second model was loaded. This is no longer possible, so these parameters have been moved to the global settings to enable face detection.
+
+The `auto_det_size` option emulates the old behavior. It has no difference on CPU. BUT it will load the model twice if you use GPU. That means more VRAM comsumption and twice the initial load time. If you don't want that, you can use a det_size of 320, read below.
+
+The `det_size` parameter defines the size of the detection area, controlling the spatial resolution at which faces are detected within an image. A larger detection size might capture more facial details, enhancing accuracy but potentially impacting processing speed. Conversely, the `det_thresh` parameter represents the detection threshold, serving as a sensitivity control for face detection. A higher threshold value leads to more conservative detection, capturing only the most prominent faces, while a lower threshold might detect more faces but could also result in more false positives.
+
+It has been observed that a det_size value of 320 is more effective at detecting large faces. If there are issues with detecting large faces, switching to this value is recommended, though it might result in a loss of some quality.

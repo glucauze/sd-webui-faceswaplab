@@ -3,13 +3,12 @@ import os
 from dataclasses import dataclass
 from pprint import pformat
 import traceback
-from typing import Any, Dict, Generator, List, Set, Tuple, Optional
+from typing import Any, Dict, Generator, List, Set, Tuple, Optional, Union
 import tempfile
 from tqdm import tqdm
 import sys
 from io import StringIO
 from contextlib import contextmanager
-import hashlib
 
 import cv2
 import insightface
@@ -37,8 +36,52 @@ from scripts.faceswaplab_postprocessing.postprocessing_options import (
 from scripts.faceswaplab_utils.models_utils import get_current_model
 from scripts.faceswaplab_utils.typing import CV2ImgU8, PILImage, Face
 from scripts.faceswaplab_inpainting.i2i_pp import img2img_diffusion
+from modules import shared
+import onnxruntime
 
-providers = ["CPUExecutionProvider"]
+
+def use_gpu() -> bool:
+    return (
+        getattr(shared.cmd_opts, "faceswaplab_gpu", False)
+        or opts.data.get("faceswaplab_use_gpu", False)
+    ) and sys.platform != "darwin"
+
+
+@lru_cache
+def force_install_gpu_providers() -> None:
+    # Ugly Ugly hack due to SDNEXT :
+    try:
+        from scripts.configure import check_install
+
+        logger.warning("Try to reinstall gpu dependencies")
+        check_install()
+        logger.warning("IF onnxruntime-gpu has been installed successfully, RESTART")
+        logger.warning(
+            "On SD.NEXT/vladmantic you will also need to check numpy>=1.24.2 and tensorflow>=2.13.0"
+        )
+    except:
+        logger.error(
+            "Reinstall has failed (which is normal on windows), please install requirements-gpu.txt manually to enable gpu."
+        )
+
+
+def get_providers() -> List[str]:
+    providers = ["CPUExecutionProvider"]
+    if use_gpu():
+        if "CUDAExecutionProvider" in onnxruntime.get_available_providers():
+            providers = ["CUDAExecutionProvider"]
+        else:
+            logger.error(
+                "CUDAExecutionProvider not found in onnxruntime.available_providers : %s, use CPU instead. Check onnxruntime-gpu is installed.",
+                onnxruntime.get_available_providers(),
+            )
+            force_install_gpu_providers()
+
+    return providers
+
+
+def is_cpu_provider() -> bool:
+    return get_providers() == ["CPUExecutionProvider"]
 
 
 def cosine_similarity_face(face1: Face, face2: Face) -> float:
@@ -95,7 +138,7 @@ def compare_faces(img1: PILImage, img2: PILImage) -> float:
 
 
 def batch_process(
-    src_images: List[PILImage],
+    src_images: List[Union[PILImage, str]],  # image or filename
     save_path: Optional[str],
     units: List[FaceSwapUnitSettings],
     postprocess_options: PostProcessingOptions,
@@ -104,7 +147,7 @@ def batch_process(
     Process a batch of images, apply face swapping according to the given settings, and optionally save the resulting images to a specified path.
 
     Args:
-        src_images (List[PILImage]): List of source PIL Images to process.
+        src_images (List[Union[PILImage, str]]): List of source PIL Images to process or list of images file names
         save_path (Optional[str]): Destination path where the processed images will be saved. If None, no images are saved.
         units (List[FaceSwapUnitSettings]): List of FaceSwapUnitSettings to apply to the images.
         postprocess_options (PostProcessingOptions): Post-processing settings to be applied to the images.
@@ -123,6 +166,18 @@ def batch_process(
         if src_images is not None and len(units) > 0:
             result_images = []
             for src_image in src_images:
+                if isinstance(src_image, str):
+                    if save_path:
+                        path = os.path.join(
+                            save_path, "swapped_" + os.path.basename(src_image)
+                        )
+                    src_image = Image.open(src_image)
+                elif save_path:
+                    path = tempfile.NamedTemporaryFile(
+                        delete=False, suffix=".png", dir=save_path
+                    ).name
+                assert isinstance(src_image, Image.Image)
+
                 current_images = []
                 swapped_images = process_images_units(
                     get_current_model(), images=[(src_image, None)], units=units
@@ -138,9 +193,6 @@ def batch_process(
 
                 if save_path:
                     for img in current_images:
-                        path = tempfile.NamedTemporaryFile(
-                            delete=False, suffix=".png", dir=save_path
-                        ).name
                         img.save(path)
 
                 result_images += current_images
@@ -257,8 +309,10 @@ def capture_stdout() -> Generator[StringIO, None, None]:
         sys.stdout = original_stdout  # Type: ignore
 
 
-@lru_cache(maxsize=1)
-def getAnalysisModel() -> insightface.app.FaceAnalysis:
+@lru_cache(maxsize=3)
+def getAnalysisModel(
+    det_size: Tuple[int, int] = (640, 640), det_thresh: float = 0.5
+) -> insightface.app.FaceAnalysis:
     """
     Retrieves the analysis model for face analysis.
 
@@ -269,11 +323,16 @@ def getAnalysisModel() -> insightface.app.FaceAnalysis:
         if not os.path.exists(faceswaplab_globals.ANALYZER_DIR):
             os.makedirs(faceswaplab_globals.ANALYZER_DIR)
 
-        logger.info("Load analysis model, will take some time. (> 30s)")
+        providers = get_providers()
+        logger.info(
+            f"Load analysis model det_size={det_size}, det_thresh={det_thresh}, providers = {providers}, will take some time. (> 30s)"
+        )
         # Initialize the analysis model with the specified name and providers
 
         with tqdm(
-            total=1, desc="Loading analysis model (first time is slow)", unit="model"
+            total=1,
+            desc=f"Loading {det_size} analysis model (first time is slow)",
+            unit="model",
         ) as pbar:
             with capture_stdout() as captured:
                 model = insightface.app.FaceAnalysis(
@@ -281,6 +340,9 @@ def getAnalysisModel() -> insightface.app.FaceAnalysis:
                     providers=providers,
                     root=faceswaplab_globals.ANALYZER_DIR,
                 )
+
+                # Prepare the analysis model for face detection with the specified detection size
+                model.prepare(ctx_id=0, det_thresh=det_thresh, det_size=det_size)
             pbar.update(1)
         logger.info("%s", pformat(captured.getvalue()))
 
@@ -290,25 +352,6 @@ def getAnalysisModel() -> insightface.app.FaceAnalysis:
             "Loading of swapping model failed, please check the requirements (On Windows, download and install Visual Studio. During the install, make sure to include the Python and C++ packages.)"
         )
         raise FaceModelException("Loading of analysis model failed")
-
-
-def is_sha1_matching(file_path: str, expected_sha1: str) -> bool:
-    sha1_hash = hashlib.sha1(usedforsecurity=False)
-    try:
-        with open(file_path, "rb") as file:
-            for byte_block in iter(lambda: file.read(4096), b""):
-                sha1_hash.update(byte_block)
-            if sha1_hash.hexdigest() == expected_sha1:
-                return True
-            else:
-                return False
-    except Exception as e:
-        logger.error(
-            "Failed to check model hash, check the model is valid or has been downloaded adequately : %e",
-            e,
-        )
-        traceback.print_exc()
-        return False
 
 
 @lru_cache(maxsize=1)
@@ -323,14 +366,7 @@ def getFaceSwapModel(model_path: str) -> upscaled_inswapper.UpscaledINSwapper:
         insightface.model_zoo.FaceModel: The face swap model.
     """
     try:
-        expected_sha1 = "17a64851eaefd55ea597ee41e5c18409754244c5"
-        if not is_sha1_matching(model_path, expected_sha1):
-            logger.error(
-                "Suspicious sha1 for model %s, check the model is valid or has been downloaded adequately. Should be %s",
-                model_path,
-                expected_sha1,
-            )
-
+        providers = get_providers()
         with tqdm(total=1, desc="Loading swap model", unit="model") as pbar:
             with capture_stdout() as captured:
                 model = upscaled_inswapper.UpscaledINSwapper(
@@ -350,8 +386,8 @@ def getFaceSwapModel(model_path: str) -> upscaled_inswapper.UpscaledINSwapper:
 
 def get_faces(
     img_data: CV2ImgU8,
-    det_size: Tuple[int, int] = (640, 640),
     det_thresh: Optional[float] = None,
+    det_size: Tuple[int, int] = (640, 640),
 ) -> List[Face]:
     """
     Detects and retrieves faces from an image using an analysis model.
@@ -368,24 +404,36 @@ def get_faces(
     if det_thresh is None:
         det_thresh = opts.data.get("faceswaplab_detection_threshold", 0.5)
 
-    # Create a deep copy of the analysis model (otherwise det_size is attached to the analysis model and can't be changed)
-    face_analyser = copy.deepcopy(getAnalysisModel())
+    auto_det_size = opts.data.get("faceswaplab_auto_det_size", True)
+    if not auto_det_size:
+        x = opts.data.get("faceswaplab_det_size", 640)
+        det_size = (x, x)
 
-    # Prepare the analysis model for face detection with the specified detection size
-    face_analyser.prepare(ctx_id=0, det_thresh=det_thresh, det_size=det_size)
+    face_analyser = getAnalysisModel(det_size, det_thresh)
 
     # Get the detected faces from the image using the analysis model
-    face = face_analyser.get(img_data)
+    faces = face_analyser.get(img_data)
 
     # If no faces are detected and the detection size is larger than 320x320,
     # recursively call the function with a smaller detection size
-    if len(face) == 0 and det_size[0] > 320 and det_size[1] > 320:
-        det_size_half = (det_size[0] // 2, det_size[1] // 2)
-        return get_faces(img_data, det_size=det_size_half, det_thresh=det_thresh)
+    if len(faces) == 0:
+        if auto_det_size:
+            if det_size[0] > 320 and det_size[1] > 320:
+                det_size_half = (det_size[0] // 2, det_size[1] // 2)
+                return get_faces(
+                    img_data, det_size=det_size_half, det_thresh=det_thresh
+                )
+
+        # If no faces are detected print a warning to user about change in detection
+        else:
+            if det_size[0] > 320:
+                logger.warning(
+                    "No faces detected, you might want to play with det_size by reducing it (in sd global settings). Lower (320) means more detection but less precise. Or activate auto-det-size."
+                )
 
     try:
         # Sort the detected faces based on their x-coordinate of the bounding box
-        return sorted(face, key=lambda x: x.bbox[0])
+        return sorted(faces, key=lambda x: x.bbox[0])
     except Exception as e:
         logger.error("Failed to get faces %s", e)
         traceback.print_exc()

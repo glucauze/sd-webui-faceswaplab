@@ -8,6 +8,8 @@ permalink: /install/
 
 The extension runs mainly on the CPU to avoid the use of VRAM. However, it is recommended to follow the specifications recommended by sd/a1111 with regard to prerequisites. At the time of writing, a version of python lower than 11 is preferable (even if it works with python 3.11, model loading and performance may fall short of expectations).
 
+Older versions of gradio don’t work well with the extension. See this bug report : https://github.com/glucauze/sd-webui-faceswaplab/issues/5. It has been tested on 3.32.0
+
 ### Windows-User : Visual Studio ! Don't neglect this !
 
 Before beginning the installation process, if you are using Windows, you need to install this requirement:
@@ -17,6 +19,12 @@ Before beginning the installation process, if you are using Windows, you need to
 2. OR Install only the VS C++ Build Tools: If you don't need the full Visual Studio suite, you can choose to install only the VS C++ Build Tools. During the installation process, select the option for "Desktop Development with C++" found under the "Workloads -> Desktop & Mobile" section. The VS C++ Build Tools can be downloaded from this link: https://visualstudio.microsoft.com/visual-cpp-build-tools/
 
 3. OR if you don't want to install either the full Visual Studio suite or the VS C++ Build Tools: Follow the instructions provided in section VIII of the documentation.
+
+## SD.Next / Vladmantic
+
+SD.Next loading optimizations in relation to extension installation scripts can sometimes cause problems. This is particularly the case if you copy the script without installing it via the interface.
+
+If you get an error after startup, try restarting the server.
 
 ## Manual Install
 

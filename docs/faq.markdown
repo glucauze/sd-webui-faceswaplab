@@ -2,6 +2,7 @@
 layout: page
 title: FAQ
 permalink: /faq/
+toc: true
 ---
 
 Our issue tracker often contains requests that may originate from a misunderstanding of the software's functionality. We aim to address these queries; however, due to time constraints, we may not be able to respond to each request individually. This FAQ section serves as a preliminary source of information for commonly raised concerns. We recommend reviewing these before submitting an issue.
@@ -71,6 +72,16 @@ The quality of results is inherently tied to the capabilities of the model and c
 
 Consider this extension as a low-cost alternative to more sophisticated tools like Lora, or as an addition to such tools. It's important to **maintain realistic expectations of the results** provided by this extension.
 
+#### Why is a face not detected?
+
+Face detection might be influenced by various factors and settings, particularly the det_size and det_thresh parameters. Here's how these could affect detection:
+
++ Detection Size (det_size): If the detection size is set too small, it may not capture large faces adequately. A value of 320 has been found to be more effective for detecting large faces, though it might result in a loss of some quality.
+
++ Detection Threshold (det_thresh): If the threshold is set too high, it can make the detection more conservative, capturing only the most prominent faces. A lower threshold might detect more faces but could also result in more false positives.
+
+If a face is not being detected, adjusting these parameters might solve the issue. Try increasing the det_size if large faces are the problem, or experiment with different det_thresh values to find the balance that works best for your specific case.
+
 
 #### Issue: Incorrect Gender Detection
 
@@ -78,11 +89,7 @@ The gender detection functionality is handled by the underlying analysis model. 
 
 #### Why isn't GPU support included?
 
-While implementing GPU support may seem straightforward, simply requiring a modification to the onnxruntime implementation and a change in providers in the swapper, there are reasons we haven't included it as a standard option.
-
-The primary consideration is the substantial VRAM usage of the SD models. Integrating the model on the GPU doesn't result in significant performance gains with the current state of the software. Moreover, the GPU support becomes truly beneficial when processing large numbers of frames or video. However, our experience indicates that this tends to cause more issues than it resolves.
-
-Consequently, requests for GPU support as a standard feature will not be considered.
+GPU is supported via an option see [documentation](../doc/). This is expermental, use it carefully.
 
 #### What is the 'Upscaled Inswapper' Option in SD FaceSwapLab?
 

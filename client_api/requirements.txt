@@ -1,5 +1,5 @@
-numpy==1.25.1
-Pillow==10.0.0
-pydantic==1.10.9
-Requests==2.31.0
-safetensors==0.3.1
+numpy
+Pillow
+pydantic
+Requests
+safetensors>=0.3.1

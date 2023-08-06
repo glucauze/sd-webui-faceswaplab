@@ -3,8 +3,9 @@ dill
 ifnude
 insightface==0.7.3
 onnx>=1.14.0
-onnxruntime>=1.15.0
 opencv-python
 pandas
 pydantic
 safetensors
+onnxruntime>=1.15.0
+onnxruntime-gpu>=1.15.0

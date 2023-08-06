@@ -17,6 +17,16 @@ def on_ui_settings() -> None:
         ),
     )
     shared.opts.add_option(
+        "faceswaplab_use_gpu",
+        shared.OptionInfo(
+            False,
+            "Use GPU, only for CUDA on Windows/Linux - experimental and risky, can messed up dependencies (requires restart)",
+            gr.Checkbox,
+            {"interactive": True},
+            section=section,
+        ),
+    )
+    shared.opts.add_option(
         "faceswaplab_keep_original",
         shared.OptionInfo(
             False,
@@ -38,10 +48,32 @@ def on_ui_settings() -> None:
     )
 
     shared.opts.add_option(
+        "faceswaplab_det_size",
+        shared.OptionInfo(
+            640,
+            "det_size : Size of the detection area for face analysis. Higher values may improve quality but reduce speed. Low value may improve detection of very large face.",
+            gr.Slider,
+            {"minimum": 320, "maximum": 640, "step": 320},
+            section=section,
+        ),
+    )
+
+    shared.opts.add_option(
+        "faceswaplab_auto_det_size",
+        shared.OptionInfo(
+            True,
+            "Auto det_size : Will load model twice and test faces on each if needed (old behaviour). Takes more VRAM. Precedence over fixed det_size",
+            gr.Checkbox,
+            {"interactive": True},
+            section=section,
+        ),
+    )
+
+    shared.opts.add_option(
         "faceswaplab_detection_threshold",
         shared.OptionInfo(
             0.5,
-            "Face Detection threshold",
+            "det_thresh : Face Detection threshold",
             gr.Slider,
             {"minimum": 0.1, "maximum": 0.99, "step": 0.001},
             section=section,

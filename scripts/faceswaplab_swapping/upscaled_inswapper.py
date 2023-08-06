@@ -195,7 +195,7 @@ class UpscaledINSwapper(INSwapper):
                     logger.info("*" * 80)
                     logger.info(f"Inswapper")
 
-                    if options.upscaler_name:
+                    if options.upscaler_name and options.upscaler_name != "None":
                         # Upscale original image
                         k = 4
                         aimg, M = face_align.norm_crop2(
@@ -262,7 +262,6 @@ class UpscaledINSwapper(INSwapper):
                 )
                 img_white[img_white > 20] = 255
                 fthresh = 10
-                print("fthresh", fthresh)
                 fake_diff[fake_diff < fthresh] = 0
                 fake_diff[fake_diff >= fthresh] = 255
                 img_mask = img_white

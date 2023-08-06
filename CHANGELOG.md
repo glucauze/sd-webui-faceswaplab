@@ -1,3 +1,7 @@
+# 1.2.1 :
+
+Add GPU support option : see https://github.com/glucauze/sd-webui-faceswaplab/pull/24
+
 # 1.2.0 :
 
 This version changes quite a few things.
@@ -18,9 +22,13 @@ Bug fixes :
 
 In terms of the API, it is now possible to create a remote checkpoint and use it in units. See the example in client_api or the tests in the tests directory.
 
+See https://github.com/glucauze/sd-webui-faceswaplab/pull/19
+
 # 1.1.2 :
 
 + Switch face checkpoint format from pkl to safetensors
+
+See https://github.com/glucauze/sd-webui-faceswaplab/pull/4
 
 ## 1.1.1 :
 

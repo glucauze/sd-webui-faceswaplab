@@ -1,8 +1,11 @@
+from scripts.configure import check_configuration
+
+check_configuration()
+
 import importlib
 import traceback
 
 from scripts import faceswaplab_globals
-from scripts.configure import check_configuration
 from scripts.faceswaplab_api import faceswaplab_api
 from scripts.faceswaplab_postprocessing import upscaling
 from scripts.faceswaplab_settings import faceswaplab_settings
@@ -12,18 +15,22 @@ from scripts.faceswaplab_utils import faceswaplab_logging, imgutils, models_util
 from scripts.faceswaplab_utils.models_utils import get_current_model
 from scripts.faceswaplab_utils.typing import *
 from scripts.faceswaplab_utils.ui_utils import dataclasses_from_flat_list
+from scripts.faceswaplab_utils.faceswaplab_logging import logger, save_img_debug
 
 # Reload all the modules when using "apply and restart"
 # This is mainly done for development purposes
-importlib.reload(swapper)
-importlib.reload(faceswaplab_logging)
-importlib.reload(faceswaplab_globals)
-importlib.reload(imgutils)
-importlib.reload(upscaling)
-importlib.reload(faceswaplab_settings)
-importlib.reload(models_utils)
-importlib.reload(faceswaplab_unit_ui)
-importlib.reload(faceswaplab_api)
+import logging
+
+if logger.getEffectiveLevel() <= logging.DEBUG:
+    importlib.reload(swapper)
+    importlib.reload(faceswaplab_logging)
+    importlib.reload(faceswaplab_globals)
+    importlib.reload(imgutils)
+    importlib.reload(upscaling)
+    importlib.reload(faceswaplab_settings)
+    importlib.reload(models_utils)
+    importlib.reload(faceswaplab_unit_ui)
+    importlib.reload(faceswaplab_api)
 
 import os
 from pprint import pformat
@@ -46,7 +53,6 @@ from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,
 )
 from scripts.faceswaplab_ui.faceswaplab_unit_settings import FaceSwapUnitSettings
-from scripts.faceswaplab_utils.faceswaplab_logging import logger, save_img_debug
 
 EXTENSION_PATH = os.path.join("extensions", "sd-webui-faceswaplab")
 
@@ -67,7 +73,6 @@ except:
 class FaceSwapScript(scripts.Script):
     def __init__(self) -> None:
         super().__init__()
-        check_configuration()
 
     @property
     def units_count(self) -> int:

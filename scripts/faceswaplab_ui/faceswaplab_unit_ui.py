@@ -10,7 +10,9 @@ def faceswap_unit_advanced_options(
     is_img2img: bool, unit_num: int = 1, id_prefix: str = "faceswaplab_"
 ) -> List[gr.components.Component]:
     with gr.Accordion(f"Post-Processing & Advanced Mask Options", open=False):
-        gr.Markdown("""Post-processing and mask settings for unit faces""")
+        gr.Markdown(
+            """Post-processing and mask settings for unit faces. Best result : checks all, use LDSR, use Codeformer"""
+        )
         with gr.Row():
             face_restorer_name = gr.Radio(
                 label="Restore Face",
@@ -208,6 +210,16 @@ def faceswap_unit_ui(
                 visible=is_img2img,
                 elem_id=f"{id_prefix}_face{unit_num}_swap_in_generated",
             )
+
+        gr.Markdown(
+            """                                        
+## Advanced Options 
+
+**Simple :** If you have bad results and don't want to fine-tune here, just enable Codeformer in "Global Post-Processing".
+Otherwise, read the [doc](https://glucauze.github.io/sd-webui-faceswaplab/doc/) to understand following options.              
+
+"""
+        )
 
         with gr.Accordion("Similarity", open=False):
             gr.Markdown("""Discard images with low similarity or no faces :""")
