@@ -201,7 +201,7 @@ def on_ui_settings() -> None:
     shared.opts.add_option(
         "faceswaplab_default_upscaled_swapper_improved_mask",
         shared.OptionInfo(
-            True,
+            False,
             "Default Use improved segmented mask (use pastenet to mask only the face) (requires restart)",
             gr.Checkbox,
             {"interactive": True},

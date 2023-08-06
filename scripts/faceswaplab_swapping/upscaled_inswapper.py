@@ -210,6 +210,11 @@ class UpscaledINSwapper(INSwapper):
                     )
 
                     if options.improved_mask:
+                        if k == 1:
+                            logger.warning(
+                                "Please note that improved mask does not work well without upscaling. Set upscaling to Lanczos at least if you want speed and want to use improved mask."
+                            )
+
                         logger.info("improved_mask")
                         mask = get_face_mask(aimg, bgr_fake)
                         bgr_fake = merge_images_with_mask(aimg, bgr_fake, mask)
