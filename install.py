@@ -36,7 +36,7 @@ def check_install() -> None:
             required_version = parse(package.split(">=")[1])
             return installed_version >= required_version
         else:
-            return True
+            return launch.is_installed(package_name)
 
     print("Checking faceswaplab requirements")
     with open(req_file) as file:
