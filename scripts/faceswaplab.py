@@ -12,7 +12,7 @@ from scripts.faceswaplab_settings import faceswaplab_settings
 from scripts.faceswaplab_swapping import swapper
 from scripts.faceswaplab_ui import faceswaplab_tab, faceswaplab_unit_ui
 from scripts.faceswaplab_utils import faceswaplab_logging, imgutils, models_utils
-from scripts.faceswaplab_utils.models_utils import get_current_model
+from scripts.faceswaplab_utils.models_utils import get_current_swap_model
 from scripts.faceswaplab_utils.typing import *
 from scripts.faceswaplab_utils.ui_utils import dataclasses_from_flat_list
 from scripts.faceswaplab_utils.faceswaplab_logging import logger, save_img_debug
@@ -99,7 +99,7 @@ class FaceSwapScript(scripts.Script):
         return f"faceswaplab"
 
     def show(self, is_img2img: bool) -> bool:
-        return scripts.AlwaysVisible
+        return scripts.AlwaysVisible  # type: ignore
 
     def ui(self, is_img2img: bool) -> List[gr.components.Component]:
         with gr.Accordion(f"FaceSwapLab {VERSION_FLAG}", open=False):
@@ -147,7 +147,7 @@ class FaceSwapScript(scripts.Script):
                         (img, None) for img in p.init_images
                     ]
                     new_inits = swapper.process_images_units(
-                        get_current_model(),
+                        get_current_swap_model(),
                         self.swap_in_source_units,
                         images=init_images,
                         force_blend=True,
@@ -181,7 +181,7 @@ class FaceSwapScript(scripts.Script):
                     for i, (img, info) in enumerate(zip(orig_images, orig_infotexts)):
                         batch_index = i % p.batch_size
                         swapped_images = swapper.process_images_units(
-                            get_current_model(),
+                            get_current_swap_model(),
                             self.swap_in_generated_units,
                             images=[(img, info)],
                         )
@@ -213,8 +213,8 @@ class FaceSwapScript(scripts.Script):
                                         swp_img,
                                         p.outpath_samples,
                                         "",
-                                        p.all_seeds[batch_index],
-                                        p.all_prompts[batch_index],
+                                        p.all_seeds[batch_index],  # type: ignore
+                                        p.all_prompts[batch_index],  # type: ignore
                                         opts.samples_format,
                                         info=new_info,
                                         p=p,
@@ -231,7 +231,7 @@ class FaceSwapScript(scripts.Script):
                     text = processed.infotexts[0]
                     infotexts.insert(0, text)
                     if opts.enable_pnginfo:
-                        grid.info["parameters"] = text
+                        grid.info["parameters"] = text  # type: ignore
                     images.insert(0, grid)
 
                     if opts.grid_save:
@@ -239,8 +239,8 @@ class FaceSwapScript(scripts.Script):
                             grid,
                             p.outpath_grids,
                             "swapped-grid",
-                            p.all_seeds[0],
-                            p.all_prompts[0],
+                            p.all_seeds[0],  # type: ignore
+                            p.all_prompts[0],  # type: ignore
                             opts.grid_format,
                             info=text,
                             short_filename=not opts.grid_extended_filename,

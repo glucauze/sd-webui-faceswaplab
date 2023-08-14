@@ -36,6 +36,8 @@ def check_install() -> None:
             required_version = parse(package.split(">=")[1])
             return installed_version >= required_version
         else:
+            if package_name == "opencv-python":
+                return launch.is_installed(package_name) or launch.is_installed("cv2")
             return launch.is_installed(package_name)
 
     print("Checking faceswaplab requirements")
@@ -59,4 +61,7 @@ def check_install() -> None:
                 raise e
 
 
-check_install()
+import timeit
+
+check_time = timeit.timeit(check_install, number=1)
+print(check_time)

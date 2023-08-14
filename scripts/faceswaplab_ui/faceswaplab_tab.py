@@ -17,7 +17,7 @@ from scripts.faceswaplab_ui.faceswaplab_unit_settings import FaceSwapUnitSetting
 from scripts.faceswaplab_ui.faceswaplab_unit_ui import faceswap_unit_ui
 from scripts.faceswaplab_utils import face_checkpoints_utils, imgutils
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
-from scripts.faceswaplab_utils.models_utils import get_models
+from scripts.faceswaplab_utils.models_utils import get_swap_models
 from scripts.faceswaplab_utils.ui_utils import dataclasses_from_flat_list
 
 
@@ -232,7 +232,7 @@ def batch_process(
 
 
 def tools_ui() -> None:
-    models = get_models()
+    models = get_swap_models()
     with gr.Tab("Tools"):
         with gr.Tab("Build"):
             gr.Markdown(

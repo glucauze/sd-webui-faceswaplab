@@ -1,11 +1,11 @@
-from scripts.faceswaplab_utils.models_utils import get_models
+from scripts.faceswaplab_utils.models_utils import get_swap_models
 from modules import script_callbacks, shared
 import gradio as gr
 
 
 def on_ui_settings() -> None:
     section = ("faceswaplab", "FaceSwapLab")
-    models = get_models()
+    models = get_swap_models()
     shared.opts.add_option(
         "faceswaplab_model",
         shared.OptionInfo(

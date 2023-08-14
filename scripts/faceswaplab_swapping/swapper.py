@@ -33,7 +33,7 @@ from scripts.faceswaplab_postprocessing.postprocessing import enhance_image
 from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,
 )
-from scripts.faceswaplab_utils.models_utils import get_current_model
+from scripts.faceswaplab_utils.models_utils import get_current_swap_model
 from scripts.faceswaplab_utils.typing import CV2ImgU8, PILImage, Face
 from scripts.faceswaplab_inpainting.i2i_pp import img2img_diffusion
 from modules import shared
@@ -51,7 +51,7 @@ def use_gpu() -> bool:
 def force_install_gpu_providers() -> None:
     # Ugly Ugly hack due to SDNEXT :
     try:
-        from scripts.configure import check_install
+        from scripts.faceswaplab_utils.install_utils import check_install
 
         logger.warning("Try to reinstall gpu dependencies")
         check_install()
@@ -180,7 +180,7 @@ def batch_process(
 
                 current_images = []
                 swapped_images = process_images_units(
-                    get_current_model(), images=[(src_image, None)], units=units
+                    get_current_swap_model(), images=[(src_image, None)], units=units
                 )
                 if len(swapped_images) > 0:
                     current_images += [img for img, _ in swapped_images]

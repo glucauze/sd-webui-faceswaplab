@@ -11,7 +11,7 @@ from scripts.faceswaplab_swapping.upcaled_inswapper_options import InswappperOpt
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
 from scripts.faceswaplab_utils.typing import *
 from scripts.faceswaplab_utils import imgutils
-from scripts.faceswaplab_utils.models_utils import get_models
+from scripts.faceswaplab_utils.models_utils import get_swap_models
 import traceback
 
 import dill as pickle  # will be removed in future versions
@@ -90,7 +90,7 @@ def build_face_checkpoint_and_save(
                     target_faces=[target_face],
                     source_face=blended_face,
                     target_img=reference_preview_img,
-                    model=get_models()[0],
+                    model=get_swap_models()[0],
                     swapping_options=InswappperOptions(face_restorer_name="Codeformer"),
                 )
                 preview_image = result.image
