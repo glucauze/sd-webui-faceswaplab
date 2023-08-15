@@ -29,12 +29,15 @@ def check_against_nsfw(img: PILImage) -> bool:
     chunks: List[Dict[str, Union[int, float]]] = detect(img)
 
     for chunk in chunks:
+        logger.debug(
+            f"chunck score {chunk['score']}, threshold : {NSFW_SCORE_THRESHOLD}"
+        )
         shapes.append(chunk["score"] > NSFW_SCORE_THRESHOLD)
 
     return any(shapes)
 
 
-def pil_to_cv2(pil_img: PILImage) -> CV2ImgU8:  # type: ignore
+def pil_to_cv2(pil_img: PILImage) -> CV2ImgU8:
     """
     Convert a PIL Image into an OpenCV image (cv2).
 
@@ -44,7 +47,7 @@ def pil_to_cv2(pil_img: PILImage) -> CV2ImgU8:  # type: ignore
     Returns:
         CV2ImgU8: The input image converted to OpenCV format (BGR).
     """
-    return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+    return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR).astype("uint8")
 
 
 def cv2_to_pil(cv2_img: CV2ImgU8) -> PILImage:  # type: ignore
