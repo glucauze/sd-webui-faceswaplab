@@ -77,4 +77,5 @@ def get_current_swap_model() -> str:
         raise FileNotFoundError(
             "No faceswap model found. Please add it to the faceswaplab directory."
         )
+    assert model is not None
     return model

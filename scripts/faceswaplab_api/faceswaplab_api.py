@@ -18,7 +18,7 @@ from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,
 )
 from client_api import api_utils
-from scripts.faceswaplab_utils.face_checkpoints_utils import (
+from scripts.faceswaplab_swapping.face_checkpoints import (
     build_face_checkpoint_and_save,
 )
 

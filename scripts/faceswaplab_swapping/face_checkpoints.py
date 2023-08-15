@@ -63,7 +63,7 @@ def build_face_checkpoint_and_save(
             scripts.basedir(), "extensions", "sd-webui-faceswaplab", "references"
         )
 
-        reference_preview_img: PILImage = None
+        reference_preview_img: PILImage
         if blended_face:
             if blended_face["gender"] == 0:
                 reference_preview_img = Image.open(
@@ -86,7 +86,6 @@ def build_face_checkpoint_and_save(
                 )
             else:
                 result = swapper.swap_face(
-                    reference_face=blended_face,
                     target_faces=[target_face],
                     source_face=blended_face,
                     target_img=reference_preview_img,

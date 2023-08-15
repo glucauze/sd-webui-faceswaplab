@@ -6,10 +6,10 @@ import numpy as np
 from math import isqrt, ceil
 import torch
 from ifnude import detect
-from scripts.faceswaplab_globals import NSFW_SCORE_THRESHOLD
 from modules import processing
 import base64
 from collections import Counter
+from scripts.faceswaplab_utils.sd_utils import get_sd_option
 from scripts.faceswaplab_utils.typing import BoxCoords, CV2ImgU8, PILImage
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
 
@@ -24,6 +24,12 @@ def check_against_nsfw(img: PILImage) -> bool:
     Returns:
     bool: True if any part of the image is considered NSFW, False otherwise.
     """
+
+    NSFW_SCORE_THRESHOLD = get_sd_option("faceswaplab_nsfw_threshold", 0.7)
+
+    # For testing purpose :
+    if NSFW_SCORE_THRESHOLD >= 1:
+        return False
 
     shapes: List[bool] = []
     chunks: List[Dict[str, Union[int, float]]] = detect(img)

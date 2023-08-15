@@ -1,4 +1,5 @@
 from scripts.configure import check_configuration
+from scripts.faceswaplab_utils.sd_utils import get_sd_option
 
 check_configuration()
 
@@ -76,7 +77,7 @@ class FaceSwapScript(scripts.Script):
 
     @property
     def units_count(self) -> int:
-        return opts.data.get("faceswaplab_units_count", 3)
+        return get_sd_option("faceswaplab_units_count", 3)
 
     @property
     def enabled(self) -> bool:
@@ -85,7 +86,7 @@ class FaceSwapScript(scripts.Script):
 
     @property
     def keep_original_images(self) -> bool:
-        return opts.data.get("faceswaplab_keep_original", False)
+        return get_sd_option("faceswaplab_keep_original", False)
 
     @property
     def swap_in_generated_units(self) -> List[FaceSwapUnitSettings]:

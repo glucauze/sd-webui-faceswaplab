@@ -1,20 +1,21 @@
 from dataclasses import *
+from typing import Optional
 from client_api import api_utils
 
 
 @dataclass
 class InswappperOptions:
-    face_restorer_name: str = None
+    face_restorer_name: Optional[str] = None
     restorer_visibility: float = 1
     codeformer_weight: float = 1
-    upscaler_name: str = None
+    upscaler_name: Optional[str] = None
     improved_mask: bool = False
     color_corrections: bool = False
     sharpen: bool = False
     erosion_factor: float = 1.0
 
     @staticmethod
-    def from_api_dto(dto: api_utils.InswappperOptions) -> "InswappperOptions":
+    def from_api_dto(dto: Optional[api_utils.InswappperOptions]) -> "InswappperOptions":
         """
         Converts a InpaintingOptions object from an API DTO (Data Transfer Object).
 

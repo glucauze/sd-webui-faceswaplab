@@ -46,6 +46,16 @@ def on_ui_settings() -> None:
             section=section,
         ),
     )
+    shared.opts.add_option(
+        "faceswaplab_nsfw_threshold",
+        shared.OptionInfo(
+            0.7,
+            "NSFW score threshold. Any image part with a score above this value will be treated as NSFW (use extension responsibly !)",
+            gr.Slider,
+            {"minimum": 0, "maximum": 1, "step": 0.01},
+            section=section,
+        ),
+    )
 
     shared.opts.add_option(
         "faceswaplab_det_size",

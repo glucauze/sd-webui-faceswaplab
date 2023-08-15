@@ -9,7 +9,7 @@ from PIL import Image
 from scripts.faceswaplab_swapping.upcaled_inswapper_options import InswappperOptions
 from scripts.faceswaplab_utils.imgutils import pil_to_cv2
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
-from scripts.faceswaplab_utils import face_checkpoints_utils
+from scripts.faceswaplab_swapping import face_checkpoints
 from scripts.faceswaplab_inpainting.faceswaplab_inpainting import InpaintingOptions
 from client_api import api_utils
 
@@ -124,7 +124,7 @@ class FaceSwapUnitSettings:
             if self.source_face and self.source_face != "None":
                 try:
                     logger.info(f"loading face {self.source_face}")
-                    face = face_checkpoints_utils.load_face(self.source_face)
+                    face = face_checkpoints.load_face(self.source_face)
                     self._reference_face = face
                 except Exception as e:
                     logger.error("Failed to load checkpoint  : %s", e)
@@ -169,7 +169,7 @@ class FaceSwapUnitSettings:
                 if isinstance(file, Image.Image):
                     img = file
                 else:
-                    img = Image.open(file.name)
+                    img = Image.open(file.name)  # type: ignore
 
                 face = swapper.get_or_default(
                     swapper.get_faces(pil_to_cv2(img)), 0, None

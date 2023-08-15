@@ -26,7 +26,6 @@ from scripts.faceswaplab_utils.imgutils import (
 )
 from scripts.faceswaplab_utils.faceswaplab_logging import logger, save_img_debug
 from scripts import faceswaplab_globals
-from modules.shared import opts
 from functools import lru_cache
 from scripts.faceswaplab_ui.faceswaplab_unit_settings import FaceSwapUnitSettings
 from scripts.faceswaplab_postprocessing.postprocessing import enhance_image
@@ -38,12 +37,13 @@ from scripts.faceswaplab_utils.typing import CV2ImgU8, PILImage, Face
 from scripts.faceswaplab_inpainting.i2i_pp import img2img_diffusion
 from modules import shared
 import onnxruntime
+from scripts.faceswaplab_utils.sd_utils import get_sd_option
 
 
 def use_gpu() -> bool:
     return (
         getattr(shared.cmd_opts, "faceswaplab_gpu", False)
-        or opts.data.get("faceswaplab_use_gpu", False)
+        or get_sd_option("faceswaplab_use_gpu", False)
     ) and sys.platform != "darwin"
 
 
@@ -166,6 +166,7 @@ def batch_process(
         if src_images is not None and len(units) > 0:
             result_images = []
             for src_image in src_images:
+                path: str = ""
                 if isinstance(src_image, str):
                     if save_path:
                         path = os.path.join(
@@ -182,7 +183,7 @@ def batch_process(
                 swapped_images = process_images_units(
                     get_current_swap_model(), images=[(src_image, None)], units=units
                 )
-                if len(swapped_images) > 0:
+                if swapped_images and len(swapped_images) > 0:
                     current_images += [img for img, _ in swapped_images]
 
                 logger.info("%s images generated", len(current_images))
@@ -209,7 +210,7 @@ def extract_faces(
     images: List[PILImage],
     extract_path: Optional[str],
     postprocess_options: PostProcessingOptions,
-) -> Optional[List[str]]:
+) -> Optional[List[PILImage]]:
     """
     Extracts faces from a list of image files.
 
@@ -232,14 +233,14 @@ def extract_faces(
             os.makedirs(extract_path, exist_ok=True)
 
         if images:
-            result_images = []
+            result_images: list[PILImage] = []
             for img in images:
                 faces = get_faces(pil_to_cv2(img))
 
                 if faces:
                     face_images = []
                     for face in faces:
-                        bbox = face.bbox.astype(int)
+                        bbox = face.bbox.astype(int)  # type: ignore
                         x_min, y_min, x_max, y_max = bbox
                         face_image = img.crop((x_min, y_min, x_max, y_max))
 
@@ -370,7 +371,7 @@ def getFaceSwapModel(model_path: str) -> upscaled_inswapper.UpscaledINSwapper:
         with tqdm(total=1, desc="Loading swap model", unit="model") as pbar:
             with capture_stdout() as captured:
                 model = upscaled_inswapper.UpscaledINSwapper(
-                    insightface.model_zoo.get_model(model_path, providers=providers)
+                    insightface.model_zoo.get_model(model_path, providers=providers)  # type: ignore
                 )
             pbar.update(1)
         logger.info("%s", pformat(captured.getvalue()))
@@ -402,11 +403,11 @@ def get_faces(
     """
 
     if det_thresh is None:
-        det_thresh = opts.data.get("faceswaplab_detection_threshold", 0.5)
+        det_thresh = get_sd_option("faceswaplab_detection_threshold", 0.5)
 
-    auto_det_size = opts.data.get("faceswaplab_auto_det_size", True)
+    auto_det_size = get_sd_option("faceswaplab_auto_det_size", True)
     if not auto_det_size:
-        x = opts.data.get("faceswaplab_det_size", 640)
+        x = get_sd_option("faceswaplab_det_size", 640)
         det_size = (x, x)
 
     face_analyser = getAnalysisModel(det_size, det_thresh)
@@ -433,7 +434,7 @@ def get_faces(
 
     try:
         # Sort the detected faces based on their x-coordinate of the bounding box
-        return sorted(faces, key=lambda x: x.bbox[0])
+        return sorted(faces, key=lambda x: x.bbox[0])  # type: ignore
     except Exception as e:
         logger.error("Failed to get faces %s", e)
         traceback.print_exc()
@@ -470,7 +471,7 @@ def filter_faces(
         filtered_faces = sorted(
             all_faces,
             reverse=True,
-            key=lambda x: (x.bbox[2] - x.bbox[0]) * (x.bbox[3] - x.bbox[1]),
+            key=lambda x: (x.bbox[2] - x.bbox[0]) * (x.bbox[3] - x.bbox[1]),  # type: ignore
         )
 
     if filtering_options.source_gender is not None:
@@ -566,7 +567,7 @@ def blend_faces(faces: List[Face]) -> Optional[Face]:
         ValueError: If the embeddings have different shapes.
 
     """
-    embeddings = [face.embedding for face in faces]
+    embeddings: list[Any] = [face.embedding for face in faces]
 
     if len(embeddings) > 0:
         embedding_shape = embeddings[0].shape
@@ -592,7 +593,6 @@ def blend_faces(faces: List[Face]) -> Optional[Face]:
 
 
 def swap_face(
-    reference_face: CV2ImgU8,
     source_face: Face,
     target_img: PILImage,
     target_faces: List[Face],
@@ -604,7 +604,6 @@ def swap_face(
     Swaps faces in the target image with the source face.
 
     Args:
-        reference_face (CV2ImgU8): The reference face used for similarity comparison.
         source_face (CV2ImgU8): The source face to be swapped.
         target_img (PILImage): The target image to swap faces in.
         model (str): Path to the face swap model.
@@ -614,7 +613,9 @@ def swap_face(
 
     """
     return_result = ImageResult(target_img, {}, {})
-    target_img_cv2: CV2ImgU8 = cv2.cvtColor(np.array(target_img), cv2.COLOR_RGB2BGR)
+    target_img_cv2: CV2ImgU8 = cv2.cvtColor(
+        np.array(target_img), cv2.COLOR_RGB2BGR
+    ).astype("uint8")
     try:
         gender = source_face["gender"]
         logger.info("Source Gender %s", gender)
@@ -732,7 +733,6 @@ def process_image_unit(
 
             save_img_debug(image, "Before swap")
             result: ImageResult = swap_face(
-                reference_face=reference_face,
                 source_face=src_face,
                 target_img=current_image,
                 target_faces=target_faces,

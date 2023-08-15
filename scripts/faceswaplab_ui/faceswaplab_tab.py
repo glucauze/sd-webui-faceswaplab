@@ -1,11 +1,12 @@
 import traceback
 from pprint import pformat
 from typing import *
+from scripts.faceswaplab_swapping import face_checkpoints
+from scripts.faceswaplab_utils.sd_utils import get_sd_option
 from scripts.faceswaplab_utils.typing import *
 import gradio as gr
 import onnx
 import pandas as pd
-from modules.shared import opts
 from PIL import Image
 
 import scripts.faceswaplab_swapping.swapper as swapper
@@ -15,7 +16,7 @@ from scripts.faceswaplab_postprocessing.postprocessing_options import (
 from scripts.faceswaplab_ui.faceswaplab_postprocessing_ui import postprocessing_ui
 from scripts.faceswaplab_ui.faceswaplab_unit_settings import FaceSwapUnitSettings
 from scripts.faceswaplab_ui.faceswaplab_unit_ui import faceswap_unit_ui
-from scripts.faceswaplab_utils import face_checkpoints_utils, imgutils
+from scripts.faceswaplab_utils import imgutils
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
 from scripts.faceswaplab_utils.models_utils import get_swap_models
 from scripts.faceswaplab_utils.ui_utils import dataclasses_from_flat_list
@@ -74,7 +75,7 @@ def extract_faces(
             [PostProcessingOptions], components
         ).pop()
         images = [
-            Image.open(file.name) for file in files
+            Image.open(file.name) for file in files  # type: ignore
         ]  # potentially greedy but Image.open is supposed to be lazy
         result_images = swapper.extract_faces(
             images, extract_path=extract_path, postprocess_options=postprocess_options
@@ -136,7 +137,7 @@ def analyse_faces(image: PILImage, det_threshold: float = 0.5) -> Optional[str]:
 
 
 def build_face_checkpoint_and_save(
-    batch_files: gr.File, name: str, overwrite: bool
+    batch_files: List[gr.File], name: str, overwrite: bool
 ) -> PILImage:
     """
     Builds a face checkpoint using the provided image files, performs face swapping,
@@ -154,16 +155,16 @@ def build_face_checkpoint_and_save(
     try:
         if not batch_files:
             logger.error("No face found")
-            return None
-        images = [Image.open(file.name) for file in batch_files]
-        preview_image = face_checkpoints_utils.build_face_checkpoint_and_save(
+            return None  # type: ignore (Optional not really supported by old gradio)
+        images = [Image.open(file.name) for file in batch_files]  # type: ignore
+        preview_image = face_checkpoints.build_face_checkpoint_and_save(
             images, name, overwrite=overwrite
         )
     except Exception as e:
         logger.error("Failed to build checkpoint %s", e)
 
         traceback.print_exc()
-        return None
+        return None  # type: ignore
     return preview_image
 
 
@@ -197,7 +198,7 @@ def explore_onnx_faceswap_model(model_path: str) -> pd.DataFrame:
         logger.error("Failed to explore model %s", e)
 
         traceback.print_exc()
-        return None
+        return None  # type: ignore
     return df
 
 
@@ -205,7 +206,7 @@ def batch_process(
     files: List[gr.File], save_path: str, *components: Tuple[Any, ...]
 ) -> List[PILImage]:
     try:
-        units_count = opts.data.get("faceswaplab_units_count", 3)
+        units_count = get_sd_option("faceswaplab_units_count", 3)
 
         classes: List[Any] = dataclasses_from_flat_list(
             [FaceSwapUnitSettings] * units_count + [PostProcessingOptions],
@@ -216,13 +217,16 @@ def batch_process(
         ]
         postprocess_options = classes[-1]
 
-        images_paths = [file.name for file in files]
+        images_paths = [file.name for file in files]  # type: ignore
 
-        return swapper.batch_process(
-            images_paths,
-            save_path=save_path,
-            units=units,
-            postprocess_options=postprocess_options,
+        return (
+            swapper.batch_process(
+                images_paths,
+                save_path=save_path,
+                units=units,
+                postprocess_options=postprocess_options,
+            )
+            or []
         )
     except Exception as e:
         logger.error("Batch Process error : %s", e)
@@ -304,7 +308,7 @@ def tools_ui() -> None:
                     label="Extracted faces",
                     show_label=False,
                     elem_id="faceswaplab_extract_results",
-                ).style(columns=[2], rows=[2])
+                )
             extract_save_path = gr.Textbox(
                 label="Destination Directory",
                 value="",
@@ -360,7 +364,7 @@ def tools_ui() -> None:
                     label="Batch result",
                     show_label=False,
                     elem_id="faceswaplab_batch_results",
-                ).style(columns=[2], rows=[2])
+                )
             batch_save_path = gr.Textbox(
                 label="Destination Directory",
                 value="outputs/faceswap/",
@@ -370,7 +374,7 @@ def tools_ui() -> None:
                 "Process & Save", elem_id="faceswaplab_extract_btn"
             )
         unit_components = []
-        for i in range(1, opts.data.get("faceswaplab_units_count", 3) + 1):
+        for i in range(1, get_sd_option("faceswaplab_units_count", 3) + 1):
             unit_components += faceswap_unit_ui(False, i, id_prefix="faceswaplab_tab")
 
     upscale_options = postprocessing_ui()

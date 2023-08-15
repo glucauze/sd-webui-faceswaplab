@@ -2,8 +2,8 @@ from typing import List
 import gradio as gr
 import modules
 from modules import shared, sd_models
-from modules.shared import opts
 from scripts.faceswaplab_postprocessing.postprocessing_options import InpaintingWhen
+from scripts.faceswaplab_utils.sd_utils import get_sd_option
 
 
 def postprocessing_ui() -> List[gr.components.Component]:
@@ -15,7 +15,7 @@ def postprocessing_ui() -> List[gr.components.Component]:
             face_restorer_name = gr.Radio(
                 label="Restore Face",
                 choices=["None"] + [x.name() for x in shared.face_restorers],
-                value=lambda: opts.data.get(
+                value=lambda: get_sd_option(
                     "faceswaplab_pp_default_face_restorer",
                     shared.face_restorers[0].name(),
                 ),
@@ -26,7 +26,7 @@ def postprocessing_ui() -> List[gr.components.Component]:
                 face_restorer_visibility = gr.Slider(
                     0,
                     1,
-                    value=lambda: opts.data.get(
+                    value=lambda: get_sd_option(
                         "faceswaplab_pp_default_face_restorer_visibility", 1
                     ),
                     step=0.001,
@@ -36,7 +36,7 @@ def postprocessing_ui() -> List[gr.components.Component]:
                 codeformer_weight = gr.Slider(
                     0,
                     1,
-                    value=lambda: opts.data.get(
+                    value=lambda: get_sd_option(
                         "faceswaplab_pp_default_face_restorer_weight", 1
                     ),
                     step=0.001,
@@ -45,7 +45,7 @@ def postprocessing_ui() -> List[gr.components.Component]:
                 )
         upscaler_name = gr.Dropdown(
             choices=[upscaler.name for upscaler in shared.sd_upscalers],
-            value=lambda: opts.data.get("faceswaplab_pp_default_upscaler", "None"),
+            value=lambda: get_sd_option("faceswaplab_pp_default_upscaler", "None"),
             label="Upscaler",
             elem_id="faceswaplab_pp_upscaler",
         )
@@ -60,7 +60,7 @@ def postprocessing_ui() -> List[gr.components.Component]:
         upscaler_visibility = gr.Slider(
             0,
             1,
-            value=lambda: opts.data.get(
+            value=lambda: get_sd_option(
                 "faceswaplab_pp_default_upscaler_visibility", 1
             ),
             step=0.1,
@@ -87,21 +87,21 @@ def postprocessing_ui() -> List[gr.components.Component]:
             )
 
             inpainting_denoising_prompt = gr.Textbox(
-                opts.data.get(
+                get_sd_option(
                     "faceswaplab_pp_default_inpainting_prompt", "Portrait of a [gender]"
                 ),
                 elem_id="faceswaplab_pp_inpainting_denoising_prompt",
                 label="Inpainting prompt use [gender] instead of men or woman",
             )
             inpainting_denoising_negative_prompt = gr.Textbox(
-                opts.data.get(
+                get_sd_option(
                     "faceswaplab_pp_default_inpainting_negative_prompt", "blurry"
                 ),
                 elem_id="faceswaplab_pp_inpainting_denoising_neg_prompt",
                 label="Inpainting negative prompt use [gender] instead of men or woman",
             )
             with gr.Row():
-                samplers_names = [s.name for s in modules.sd_samplers.all_samplers]
+                samplers_names = [s.name for s in modules.sd_samplers.all_samplers]  # type: ignore
                 inpainting_sampler = gr.Dropdown(
                     choices=samplers_names,
                     value=[samplers_names[0]],

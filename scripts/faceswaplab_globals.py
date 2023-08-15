@@ -1,6 +1,5 @@
 import os
 from modules import scripts
-from modules.shared import opts
 
 # Defining the absolute path for the 'faceswaplab' directory inside 'models' directory
 MODELS_DIR = os.path.abspath(os.path.join("models", "faceswaplab"))
@@ -21,7 +20,5 @@ VERSION_FLAG: str = "v1.2.2"
 # Defining the path for 'sd-webui-faceswaplab' inside the 'extensions' directory
 EXTENSION_PATH = os.path.join("extensions", "sd-webui-faceswaplab")
 
-# Defining the NSFW score threshold. Any image part with a score above this value will be treated as NSFW (Not Safe For Work)
-NSFW_SCORE_THRESHOLD: float = opts.data.get("faceswaplab_nsfw_threshold", 0.7)  # type: ignore
 # Defining the expected SHA1 hash value for 'INSWAPPER'
 EXPECTED_INSWAPPER_SHA1 = "17a64851eaefd55ea597ee41e5c18409754244c5"

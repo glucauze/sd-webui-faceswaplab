@@ -1,10 +1,9 @@
-from typing import Any, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 import cv2
 import numpy as np
 from insightface.model_zoo.inswapper import INSwapper
 from insightface.utils import face_align
 from modules import processing, shared
-from modules.shared import opts
 from modules.upscaler import UpscalerData
 
 from scripts.faceswaplab_postprocessing import upscaling
@@ -14,13 +13,14 @@ from scripts.faceswaplab_postprocessing.postprocessing_options import (
 from scripts.faceswaplab_swapping.facemask import generate_face_mask
 from scripts.faceswaplab_swapping.upcaled_inswapper_options import InswappperOptions
 from scripts.faceswaplab_utils.imgutils import cv2_to_pil, pil_to_cv2
+from scripts.faceswaplab_utils.sd_utils import get_sd_option
 from scripts.faceswaplab_utils.typing import CV2ImgU8, Face
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
 
 
-def get_upscaler() -> UpscalerData:
+def get_upscaler() -> Optional[UpscalerData]:
     for upscaler in shared.sd_upscalers:
-        if upscaler.name == opts.data.get(
+        if upscaler.name == get_sd_option(
             "faceswaplab_upscaled_swapper_upscaler", "LDSR"
         ):
             return upscaler
@@ -130,8 +130,14 @@ class UpscaledINSwapper(INSwapper):
         self.__dict__.update(inswapper.__dict__)
 
     def upscale_and_restore(
-        self, img: CV2ImgU8, k: int = 2, inswapper_options: InswappperOptions = None
+        self,
+        img: CV2ImgU8,
+        k: int = 2,
+        inswapper_options: Optional[InswappperOptions] = None,
     ) -> CV2ImgU8:
+        if inswapper_options is None:
+            return img
+
         pil_img = cv2_to_pil(img)
         pp_options = PostProcessingOptions(
             upscaler_name=inswapper_options.upscaler_name,
@@ -156,7 +162,7 @@ class UpscaledINSwapper(INSwapper):
         target_face: Face,
         source_face: Face,
         paste_back: bool = True,
-        options: InswappperOptions = None,
+        options: Optional[InswappperOptions] = None,
     ) -> Union[CV2ImgU8, Tuple[CV2ImgU8, Any]]:
         aimg, M = face_align.norm_crop2(img, target_face.kps, self.input_size[0])
         blob = cv2.dnn.blobFromImage(
@@ -166,9 +172,10 @@ class UpscaledINSwapper(INSwapper):
             (self.input_mean, self.input_mean, self.input_mean),
             swapRB=True,
         )
-        latent = source_face.normed_embedding.reshape((1, -1))
+        latent = source_face.normed_embedding.reshape((1, -1))  # type: ignore
         latent = np.dot(latent, self.emap)
         latent /= np.linalg.norm(latent)
+        assert self.session is not None
         pred = self.session.run(
             self.output_names, {self.input_names[0]: blob, self.input_names[1]: latent}
         )[0]
@@ -274,7 +281,7 @@ class UpscaledINSwapper(INSwapper):
                 mask_h = np.max(mask_h_inds) - np.min(mask_h_inds)
                 mask_w = np.max(mask_w_inds) - np.min(mask_w_inds)
                 mask_size = int(np.sqrt(mask_h * mask_w))
-                erosion_factor = options.erosion_factor
+                erosion_factor = options.erosion_factor if options else 1
 
                 k = max(int(mask_size // 10 * erosion_factor), int(10 * erosion_factor))
 
