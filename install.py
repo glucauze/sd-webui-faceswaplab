@@ -7,15 +7,15 @@ from packaging.version import parse
 
 
 def check_install() -> None:
-    use_gpu = getattr(
-        shared.cmd_opts, "faceswaplab_gpu", False
-    ) or shared.opts.data.get("faceswaplab_use_gpu", False)
+    use_gpu = not getattr(shared.cmd_opts, "use-cpu", False)
 
     if use_gpu and sys.platform != "darwin":
+        print("Faceswaplab : Use GPU requirements")
         req_file = os.path.join(
             os.path.dirname(os.path.realpath(__file__)), "requirements-gpu.txt"
         )
     else:
+        print("Faceswaplab : Use CPU requirements")
         req_file = os.path.join(
             os.path.dirname(os.path.realpath(__file__)), "requirements.txt"
         )

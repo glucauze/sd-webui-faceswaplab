@@ -101,8 +101,9 @@ def cosine_similarity_face(face1: Face, face2: Face) -> float:
         non-negative similarity score.
     """
     # Reshape the face embeddings to have a shape of (1, -1)
-    vec1 = face1.embedding.reshape(1, -1)
-    vec2 = face2.embedding.reshape(1, -1)
+    assert face1.normed_embedding is not None and face2.normed_embedding is not None
+    vec1 = face1.normed_embedding.reshape(1, -1)
+    vec2 = face2.normed_embedding.reshape(1, -1)
 
     # Calculate the cosine similarity between the reshaped embeddings
     similarity = cosine_similarity(vec1, vec2)
@@ -312,7 +313,9 @@ def capture_stdout() -> Generator[StringIO, None, None]:
 
 @lru_cache(maxsize=3)
 def getAnalysisModel(
-    det_size: Tuple[int, int] = (640, 640), det_thresh: float = 0.5
+    det_size: Tuple[int, int] = (640, 640),
+    det_thresh: float = 0.5,
+    use_gpu: bool = False,
 ) -> insightface.app.FaceAnalysis:
     """
     Retrieves the analysis model for face analysis.
@@ -356,7 +359,9 @@ def getAnalysisModel(
 
 
 @lru_cache(maxsize=1)
-def getFaceSwapModel(model_path: str) -> upscaled_inswapper.UpscaledINSwapper:
+def getFaceSwapModel(
+    model_path: str, use_gpu: bool = False
+) -> upscaled_inswapper.UpscaledINSwapper:
     """
     Retrieves the face swap model and initializes it if necessary.
 
@@ -410,7 +415,9 @@ def get_faces(
         x = get_sd_option("faceswaplab_det_size", 640)
         det_size = (x, x)
 
-    face_analyser = getAnalysisModel(det_size, det_thresh)
+    face_analyser = getAnalysisModel(
+        det_size=det_size, det_thresh=det_thresh, use_gpu=not is_cpu_provider()
+    )
 
     # Get the detected faces from the image using the analysis model
     faces = face_analyser.get(img_data)
@@ -619,9 +626,9 @@ def swap_face(
         gender = source_face["gender"]
         logger.info("Source Gender %s", gender)
         if source_face is not None:
-            result = target_img_cv2
+            result: CV2ImgU8 = target_img_cv2
             model_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), model)
-            face_swapper = getFaceSwapModel(model_path)
+            face_swapper = getFaceSwapModel(model_path, use_gpu=not is_cpu_provider())
             logger.info("Target faces count : %s", len(target_faces))
 
             for i, swapped_face in enumerate(target_faces):
