@@ -11,7 +11,7 @@ from scripts.faceswaplab_swapping.upcaled_inswapper_options import InswappperOpt
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
 from scripts.faceswaplab_utils.typing import *
 from scripts.faceswaplab_utils import imgutils
-from scripts.faceswaplab_utils.models_utils import get_models
+from scripts.faceswaplab_utils.models_utils import get_swap_models
 import traceback
 
 import dill as pickle  # will be removed in future versions
@@ -38,8 +38,11 @@ def sanitize_name(name: str) -> str:
 
 
 def build_face_checkpoint_and_save(
-    images: List[PILImage], name: str, overwrite: bool = False, path: str = None
-) -> PILImage:
+    images: List[PILImage],
+    name: str,
+    overwrite: bool = False,
+    path: Optional[str] = None,
+) -> Optional[PILImage]:
     """
     Builds a face checkpoint using the provided image files, performs face swapping,
     and saves the result to a file. If a blended face is successfully obtained and the face swapping
@@ -57,13 +60,17 @@ def build_face_checkpoint_and_save(
         name = sanitize_name(name)
         images = images or []
         logger.info("Build %s with %s images", name, len(images))
-        faces = swapper.get_faces_from_img_files(images)
-        blended_face = swapper.blend_faces(faces)
+        faces: List[Face] = swapper.get_faces_from_img_files(images=images)
+        if faces is None or len(faces) == 0:
+            logger.error("No source faces found")
+            return None
+
+        blended_face: Optional[Face] = swapper.blend_faces(faces)
         preview_path = os.path.join(
             scripts.basedir(), "extensions", "sd-webui-faceswaplab", "references"
         )
 
-        reference_preview_img: PILImage = None
+        reference_preview_img: PILImage
         if blended_face:
             if blended_face["gender"] == 0:
                 reference_preview_img = Image.open(
@@ -85,41 +92,51 @@ def build_face_checkpoint_and_save(
                     "Failed to open reference image, cannot create preview : That should not happen unless you deleted the references folder or change the detection threshold."
                 )
             else:
-                result = swapper.swap_face(
-                    reference_face=blended_face,
+                result: swapper.ImageResult = swapper.swap_face(
                     target_faces=[target_face],
                     source_face=blended_face,
                     target_img=reference_preview_img,
-                    model=get_models()[0],
-                    swapping_options=InswappperOptions(face_restorer_name="Codeformer"),
+                    model=get_swap_models()[0],
+                    swapping_options=InswappperOptions(
+                        face_restorer_name="CodeFormer",
+                        restorer_visibility=1,
+                        upscaler_name="Lanczos",
+                        codeformer_weight=1,
+                        improved_mask=True,
+                        color_corrections=False,
+                        sharpen=True,
+                    ),
                 )
                 preview_image = result.image
 
-            if path:
-                file_path = path
-            else:
-                file_path = os.path.join(get_checkpoint_path(), f"{name}.safetensors")
-                if not overwrite:
-                    file_number = 1
-                    while os.path.exists(file_path):
-                        file_path = os.path.join(
-                            get_checkpoint_path(), f"{name}_{file_number}.safetensors"
-                        )
-                        file_number += 1
-            save_face(filename=file_path, face=blended_face)
-            preview_image.save(file_path + ".png")
-            try:
-                data = load_face(file_path)
-                logger.debug(data)
-            except Exception as e:
-                logger.error("Error loading checkpoint, after creation %s", e)
-                traceback.print_exc()
+                if path:
+                    file_path = path
+                else:
+                    file_path = os.path.join(
+                        get_checkpoint_path(), f"{name}.safetensors"
+                    )
+                    if not overwrite:
+                        file_number = 1
+                        while os.path.exists(file_path):
+                            file_path = os.path.join(
+                                get_checkpoint_path(),
+                                f"{name}_{file_number}.safetensors",
+                            )
+                            file_number += 1
+                save_face(filename=file_path, face=blended_face)
+                preview_image.save(file_path + ".png")
+                try:
+                    data = load_face(file_path)
+                    logger.debug(data)
+                except Exception as e:
+                    logger.error("Error loading checkpoint, after creation %s", e)
+                    traceback.print_exc()
 
-            return preview_image
+                return preview_image
 
         else:
             logger.error("No face found")
-            return None
+            return None  # type: ignore
     except Exception as e:
         logger.error("Failed to build checkpoint %s", e)
         traceback.print_exc()
@@ -140,7 +157,7 @@ def save_face(face: Face, filename: str) -> None:
         raise e
 
 
-def load_face(name: str) -> Face:
+def load_face(name: str) -> Optional[Face]:
     if name.startswith("data:application/face;base64,"):
         with tempfile.NamedTemporaryFile(delete=True) as temp_file:
             api_utils.base64_to_safetensors(name, temp_file.name)

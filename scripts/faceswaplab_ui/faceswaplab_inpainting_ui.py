@@ -1,7 +1,7 @@
 from typing import List
 import gradio as gr
-from modules.shared import opts
 from modules import sd_models, sd_samplers
+from scripts.faceswaplab_utils.sd_utils import get_sd_option
 
 
 def face_inpainting_ui(
@@ -19,14 +19,14 @@ def face_inpainting_ui(
         )
 
         inpainting_denoising_prompt = gr.Textbox(
-            opts.data.get(
+            get_sd_option(
                 "faceswaplab_pp_default_inpainting_prompt", "Portrait of a [gender]"
             ),
             elem_id=f"{id_prefix}_pp_inpainting_denoising_prompt",
             label="Inpainting prompt use [gender] instead of men or woman",
         )
         inpainting_denoising_negative_prompt = gr.Textbox(
-            opts.data.get(
+            get_sd_option(
                 "faceswaplab_pp_default_inpainting_negative_prompt", "blurry"
             ),
             elem_id=f"{id_prefix}_pp_inpainting_denoising_neg_prompt",

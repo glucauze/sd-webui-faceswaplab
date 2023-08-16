@@ -6,10 +6,10 @@ import numpy as np
 from math import isqrt, ceil
 import torch
 from ifnude import detect
-from scripts.faceswaplab_globals import NSFW_SCORE_THRESHOLD
 from modules import processing
 import base64
 from collections import Counter
+from scripts.faceswaplab_utils.sd_utils import get_sd_option
 from scripts.faceswaplab_utils.typing import BoxCoords, CV2ImgU8, PILImage
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
 
@@ -25,16 +25,25 @@ def check_against_nsfw(img: PILImage) -> bool:
     bool: True if any part of the image is considered NSFW, False otherwise.
     """
 
+    NSFW_SCORE_THRESHOLD = get_sd_option("faceswaplab_nsfw_threshold", 0.7)
+
+    # For testing purpose :
+    if NSFW_SCORE_THRESHOLD >= 1:
+        return False
+
     shapes: List[bool] = []
     chunks: List[Dict[str, Union[int, float]]] = detect(img)
 
     for chunk in chunks:
+        logger.debug(
+            f"chunck score {chunk['score']}, threshold : {NSFW_SCORE_THRESHOLD}"
+        )
         shapes.append(chunk["score"] > NSFW_SCORE_THRESHOLD)
 
     return any(shapes)
 
 
-def pil_to_cv2(pil_img: PILImage) -> CV2ImgU8:  # type: ignore
+def pil_to_cv2(pil_img: PILImage) -> CV2ImgU8:
     """
     Convert a PIL Image into an OpenCV image (cv2).
 
@@ -44,7 +53,7 @@ def pil_to_cv2(pil_img: PILImage) -> CV2ImgU8:  # type: ignore
     Returns:
         CV2ImgU8: The input image converted to OpenCV format (BGR).
     """
-    return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+    return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR).astype("uint8")
 
 
 def cv2_to_pil(cv2_img: CV2ImgU8) -> PILImage:  # type: ignore

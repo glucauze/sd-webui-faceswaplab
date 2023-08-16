@@ -20,15 +20,13 @@ While FaceSwapLab is still under development, it has reached a good level of sta
 
 In short:
 
-+ **Ethical Guideline:** This extension should not be forked to create a public, easy way to circumvent NSFW filtering.
++ **Ethical Guideline:** This extension is **not intended to facilitate the creation of not safe for work (NSFW) or non-consensual deepfake content**. Its purpose is to bring consistency to image creation, making it easier to repair existing images, or bring characters back to life.
 + **License:** This software is distributed under the terms of the GNU Affero General Public License (AGPL), version 3 or later.
 + **Model License:** This software uses InsightFace's pre-trained models, which are available for non-commercial research purposes only.
 
 ### Ethical Guideline
 
 This extension is **not intended to facilitate the creation of not safe for work (NSFW) or non-consensual deepfake content**. Its purpose is to bring consistency to image creation, making it easier to repair existing images, or bring characters back to life.
-
-While the code for this extension is licensed under the AGPL in compliance with models and other source materials, it's important to stress that **we strongly discourage any attempts to fork this project to create an uncensored version**. Any modifications to the code to enable the production of such content would be contrary to the ethical guidelines we advocate for.
 
 We will comply with European regulations regarding this type of software. As required by law, the code may include both visible and invisible watermarks. If your local laws prohibit the use of this extension, you should not use it.
 

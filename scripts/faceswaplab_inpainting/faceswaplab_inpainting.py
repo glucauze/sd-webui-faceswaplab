@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 import gradio as gr
 from client_api import api_utils
 
@@ -15,10 +15,10 @@ class InpaintingOptions:
 
     @staticmethod
     def from_gradio(components: List[gr.components.Component]) -> "InpaintingOptions":
-        return InpaintingOptions(*components)
+        return InpaintingOptions(*components)  # type: ignore
 
     @staticmethod
-    def from_api_dto(dto: api_utils.InpaintingOptions) -> "InpaintingOptions":
+    def from_api_dto(dto: Optional[api_utils.InpaintingOptions]) -> "InpaintingOptions":
         """
         Converts a InpaintingOptions object from an API DTO (Data Transfer Object).
 

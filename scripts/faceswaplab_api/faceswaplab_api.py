@@ -18,9 +18,10 @@ from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,
 )
 from client_api import api_utils
-from scripts.faceswaplab_utils.face_checkpoints_utils import (
+from scripts.faceswaplab_swapping.face_checkpoints import (
     build_face_checkpoint_and_save,
 )
+from scripts.faceswaplab_utils.typing import PILImage
 
 
 def encode_to_base64(image: Union[str, Image.Image, np.ndarray]) -> str:  # type: ignore
@@ -99,7 +100,7 @@ def faceswaplab_api(_: gr.Blocks, app: FastAPI) -> None:
                 pp_options = None
             units = get_faceswap_units_settings(request.units)
 
-            swapped_images = swapper.batch_process(
+            swapped_images: Optional[List[PILImage]] = swapper.batch_process(
                 [src_image], None, units=units, postprocess_options=pp_options
             )
 

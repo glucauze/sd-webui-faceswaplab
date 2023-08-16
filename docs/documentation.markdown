@@ -17,6 +17,21 @@ Once you're happy with some results but want to improve, the next steps are to:
 + Use advanced settings in face units (which are not as complex as they might seem, it's basically fine tuning post-processing for each faces).
 + Use pre/post inpainting to tweak the image a bit for more natural results.
 
+### Getting better results
+
+1. Put a face in the reference.
+2. Select a face number.
+3. Select "Enable."
+
+4. In **Post-Processing** accordeon:
+    + Select "CodeFormer" 
+    + Select "LDSR" or a faster model "003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN" in upscaler. See [here for a list of upscalers](https://github.com/glucauze/sd-webui-faceswaplab/discussions/29). 
+    + Use sharpen, color_correction and improved mask
+
+5. Disable "CodeFormer" in **Global Post-Processing** tab (otherwise it will be applied twice)
+
+Don't hesitate to share config in the [discussion section](https://github.com/glucauze/sd-webui-faceswaplab/discussions).
+
 ## Main Interface
 
 Here is the interface for FaceSwap Lab. It is available in the form of an accordion in both img2img and txt2img.

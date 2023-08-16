@@ -1,11 +1,11 @@
-from scripts.faceswaplab_utils.models_utils import get_models
+from scripts.faceswaplab_utils.models_utils import get_swap_models
 from modules import script_callbacks, shared
 import gradio as gr
 
 
 def on_ui_settings() -> None:
     section = ("faceswaplab", "FaceSwapLab")
-    models = get_models()
+    models = get_swap_models()
     shared.opts.add_option(
         "faceswaplab_model",
         shared.OptionInfo(
@@ -43,6 +43,16 @@ def on_ui_settings() -> None:
             "Max faces units (requires restart)",
             gr.Slider,
             {"minimum": 1, "maximum": 10, "step": 1},
+            section=section,
+        ),
+    )
+    shared.opts.add_option(
+        "faceswaplab_nsfw_threshold",
+        shared.OptionInfo(
+            0.7,
+            "NSFW score threshold. Any image part with a score above this value will be treated as NSFW (use extension responsibly !). 1=Disable filtering",
+            gr.Slider,
+            {"minimum": 0, "maximum": 1, "step": 0.01},
             section=section,
         ),
     )

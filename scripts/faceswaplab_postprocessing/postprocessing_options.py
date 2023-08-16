@@ -1,3 +1,4 @@
+from typing import Optional
 from modules.face_restoration import FaceRestoration
 from modules.upscaler import UpscalerData
 from dataclasses import dataclass
@@ -27,17 +28,17 @@ class PostProcessingOptions:
     inpainting_when: InpaintingWhen = InpaintingWhen.BEFORE_UPSCALING
 
     # (Don't use optional for this or gradio parsing will fail) :
-    inpainting_options: InpaintingOptions = None
+    inpainting_options: InpaintingOptions = None  # type: ignore
 
     @property
-    def upscaler(self) -> UpscalerData:
+    def upscaler(self) -> Optional[UpscalerData]:
         for upscaler in shared.sd_upscalers:
             if upscaler.name == self.upscaler_name:
                 return upscaler
         return None
 
     @property
-    def face_restorer(self) -> FaceRestoration:
+    def face_restorer(self) -> Optional[FaceRestoration]:
         for face_restorer in shared.face_restorers:
             if face_restorer.name() == self.face_restorer_name:
                 return face_restorer

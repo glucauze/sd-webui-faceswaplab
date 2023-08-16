@@ -7,15 +7,15 @@ from packaging.version import parse
 
 
 def check_install() -> None:
-    use_gpu = getattr(
-        shared.cmd_opts, "faceswaplab_gpu", False
-    ) or shared.opts.data.get("faceswaplab_use_gpu", False)
+    use_gpu = not getattr(shared.cmd_opts, "use-cpu", False)
 
     if use_gpu and sys.platform != "darwin":
+        print("Faceswaplab : Use GPU requirements")
         req_file = os.path.join(
             os.path.dirname(os.path.realpath(__file__)), "requirements-gpu.txt"
         )
     else:
+        print("Faceswaplab : Use CPU requirements")
         req_file = os.path.join(
             os.path.dirname(os.path.realpath(__file__)), "requirements.txt"
         )
@@ -36,6 +36,8 @@ def check_install() -> None:
             required_version = parse(package.split(">=")[1])
             return installed_version >= required_version
         else:
+            if package_name == "opencv-python":
+                return launch.is_installed(package_name) or launch.is_installed("cv2")
             return launch.is_installed(package_name)
 
     print("Checking faceswaplab requirements")
@@ -54,9 +56,12 @@ def check_install() -> None:
             except Exception as e:
                 print(e)
                 print(
-                    f"Warning: Failed to install {package}, faceswaplab will not work."
+                    f"Warning: Failed to install {package}, faceswaplab may not work. Try to restart server or install dependencies manually."
                 )
                 raise e
 
 
-check_install()
+import timeit
+
+check_time = timeit.timeit(check_install, number=1)
+print(check_time)

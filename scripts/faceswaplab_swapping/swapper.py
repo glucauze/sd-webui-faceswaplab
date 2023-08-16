@@ -26,24 +26,24 @@ from scripts.faceswaplab_utils.imgutils import (
 )
 from scripts.faceswaplab_utils.faceswaplab_logging import logger, save_img_debug
 from scripts import faceswaplab_globals
-from modules.shared import opts
 from functools import lru_cache
 from scripts.faceswaplab_ui.faceswaplab_unit_settings import FaceSwapUnitSettings
 from scripts.faceswaplab_postprocessing.postprocessing import enhance_image
 from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,
 )
-from scripts.faceswaplab_utils.models_utils import get_current_model
+from scripts.faceswaplab_utils.models_utils import get_current_swap_model
 from scripts.faceswaplab_utils.typing import CV2ImgU8, PILImage, Face
 from scripts.faceswaplab_inpainting.i2i_pp import img2img_diffusion
 from modules import shared
 import onnxruntime
+from scripts.faceswaplab_utils.sd_utils import get_sd_option
 
 
 def use_gpu() -> bool:
     return (
         getattr(shared.cmd_opts, "faceswaplab_gpu", False)
-        or opts.data.get("faceswaplab_use_gpu", False)
+        or get_sd_option("faceswaplab_use_gpu", False)
     ) and sys.platform != "darwin"
 
 
@@ -51,7 +51,7 @@ def use_gpu() -> bool:
 def force_install_gpu_providers() -> None:
     # Ugly Ugly hack due to SDNEXT :
     try:
-        from scripts.configure import check_install
+        from scripts.faceswaplab_utils.install_utils import check_install
 
         logger.warning("Try to reinstall gpu dependencies")
         check_install()
@@ -101,8 +101,9 @@ def cosine_similarity_face(face1: Face, face2: Face) -> float:
         non-negative similarity score.
     """
     # Reshape the face embeddings to have a shape of (1, -1)
-    vec1 = face1.embedding.reshape(1, -1)
-    vec2 = face2.embedding.reshape(1, -1)
+    assert face1.normed_embedding is not None and face2.normed_embedding is not None
+    vec1 = face1.normed_embedding.reshape(1, -1)
+    vec2 = face2.normed_embedding.reshape(1, -1)
 
     # Calculate the cosine similarity between the reshaped embeddings
     similarity = cosine_similarity(vec1, vec2)
@@ -141,7 +142,7 @@ def batch_process(
     src_images: List[Union[PILImage, str]],  # image or filename
     save_path: Optional[str],
     units: List[FaceSwapUnitSettings],
-    postprocess_options: PostProcessingOptions,
+    postprocess_options: Optional[PostProcessingOptions],
 ) -> Optional[List[PILImage]]:
     """
     Process a batch of images, apply face swapping according to the given settings, and optionally save the resulting images to a specified path.
@@ -166,6 +167,7 @@ def batch_process(
         if src_images is not None and len(units) > 0:
             result_images = []
             for src_image in src_images:
+                path: str = ""
                 if isinstance(src_image, str):
                     if save_path:
                         path = os.path.join(
@@ -180,9 +182,9 @@ def batch_process(
 
                 current_images = []
                 swapped_images = process_images_units(
-                    get_current_model(), images=[(src_image, None)], units=units
+                    get_current_swap_model(), images=[(src_image, None)], units=units
                 )
-                if len(swapped_images) > 0:
+                if swapped_images and len(swapped_images) > 0:
                     current_images += [img for img, _ in swapped_images]
 
                 logger.info("%s images generated", len(current_images))
@@ -209,7 +211,7 @@ def extract_faces(
     images: List[PILImage],
     extract_path: Optional[str],
     postprocess_options: PostProcessingOptions,
-) -> Optional[List[str]]:
+) -> Optional[List[PILImage]]:
     """
     Extracts faces from a list of image files.
 
@@ -232,14 +234,14 @@ def extract_faces(
             os.makedirs(extract_path, exist_ok=True)
 
         if images:
-            result_images = []
+            result_images: list[PILImage] = []
             for img in images:
                 faces = get_faces(pil_to_cv2(img))
 
                 if faces:
                     face_images = []
                     for face in faces:
-                        bbox = face.bbox.astype(int)
+                        bbox = face.bbox.astype(int)  # type: ignore
                         x_min, y_min, x_max, y_max = bbox
                         face_image = img.crop((x_min, y_min, x_max, y_max))
 
@@ -311,7 +313,9 @@ def capture_stdout() -> Generator[StringIO, None, None]:
 
 @lru_cache(maxsize=3)
 def getAnalysisModel(
-    det_size: Tuple[int, int] = (640, 640), det_thresh: float = 0.5
+    det_size: Tuple[int, int] = (640, 640),
+    det_thresh: float = 0.5,
+    use_gpu: bool = False,
 ) -> insightface.app.FaceAnalysis:
     """
     Retrieves the analysis model for face analysis.
@@ -355,7 +359,9 @@ def getAnalysisModel(
 
 
 @lru_cache(maxsize=1)
-def getFaceSwapModel(model_path: str) -> upscaled_inswapper.UpscaledINSwapper:
+def getFaceSwapModel(
+    model_path: str, use_gpu: bool = False
+) -> upscaled_inswapper.UpscaledINSwapper:
     """
     Retrieves the face swap model and initializes it if necessary.
 
@@ -370,7 +376,7 @@ def getFaceSwapModel(model_path: str) -> upscaled_inswapper.UpscaledINSwapper:
         with tqdm(total=1, desc="Loading swap model", unit="model") as pbar:
             with capture_stdout() as captured:
                 model = upscaled_inswapper.UpscaledINSwapper(
-                    insightface.model_zoo.get_model(model_path, providers=providers)
+                    insightface.model_zoo.get_model(model_path, providers=providers)  # type: ignore
                 )
             pbar.update(1)
         logger.info("%s", pformat(captured.getvalue()))
@@ -402,14 +408,16 @@ def get_faces(
     """
 
     if det_thresh is None:
-        det_thresh = opts.data.get("faceswaplab_detection_threshold", 0.5)
+        det_thresh = get_sd_option("faceswaplab_detection_threshold", 0.5)
 
-    auto_det_size = opts.data.get("faceswaplab_auto_det_size", True)
+    auto_det_size = get_sd_option("faceswaplab_auto_det_size", True)
     if not auto_det_size:
-        x = opts.data.get("faceswaplab_det_size", 640)
+        x = get_sd_option("faceswaplab_det_size", 640)
         det_size = (x, x)
 
-    face_analyser = getAnalysisModel(det_size, det_thresh)
+    face_analyser = getAnalysisModel(
+        det_size=det_size, det_thresh=det_thresh, use_gpu=not is_cpu_provider()
+    )
 
     # Get the detected faces from the image using the analysis model
     faces = face_analyser.get(img_data)
@@ -433,7 +441,7 @@ def get_faces(
 
     try:
         # Sort the detected faces based on their x-coordinate of the bounding box
-        return sorted(faces, key=lambda x: x.bbox[0])
+        return sorted(faces, key=lambda x: x.bbox[0])  # type: ignore
     except Exception as e:
         logger.error("Failed to get faces %s", e)
         traceback.print_exc()
@@ -470,7 +478,7 @@ def filter_faces(
         filtered_faces = sorted(
             all_faces,
             reverse=True,
-            key=lambda x: (x.bbox[2] - x.bbox[0]) * (x.bbox[3] - x.bbox[1]),
+            key=lambda x: (x.bbox[2] - x.bbox[0]) * (x.bbox[3] - x.bbox[1]),  # type: ignore
         )
 
     if filtering_options.source_gender is not None:
@@ -526,7 +534,7 @@ def get_or_default(l: List[Any], index: int, default: Any) -> Any:
     return l[index] if index < len(l) else default
 
 
-def get_faces_from_img_files(images: List[PILImage]) -> List[Optional[CV2ImgU8]]:
+def get_faces_from_img_files(images: List[PILImage]) -> List[Face]:
     """
     Extracts faces from a list of image files.
 
@@ -538,7 +546,7 @@ def get_faces_from_img_files(images: List[PILImage]) -> List[Optional[CV2ImgU8]]
 
     """
 
-    faces = []
+    faces: List[Face] = []
 
     if len(images) > 0:
         for img in images:
@@ -566,7 +574,7 @@ def blend_faces(faces: List[Face]) -> Optional[Face]:
         ValueError: If the embeddings have different shapes.
 
     """
-    embeddings = [face.embedding for face in faces]
+    embeddings: list[Any] = [face.embedding for face in faces]
 
     if len(embeddings) > 0:
         embedding_shape = embeddings[0].shape
@@ -592,19 +600,16 @@ def blend_faces(faces: List[Face]) -> Optional[Face]:
 
 
 def swap_face(
-    reference_face: CV2ImgU8,
     source_face: Face,
     target_img: PILImage,
     target_faces: List[Face],
     model: str,
     swapping_options: Optional[InswappperOptions],
-    compute_similarity: bool = True,
 ) -> ImageResult:
     """
     Swaps faces in the target image with the source face.
 
     Args:
-        reference_face (CV2ImgU8): The reference face used for similarity comparison.
         source_face (CV2ImgU8): The source face to be swapped.
         target_img (PILImage): The target image to swap faces in.
         model (str): Path to the face swap model.
@@ -614,14 +619,16 @@ def swap_face(
 
     """
     return_result = ImageResult(target_img, {}, {})
-    target_img_cv2: CV2ImgU8 = cv2.cvtColor(np.array(target_img), cv2.COLOR_RGB2BGR)
+    target_img_cv2: CV2ImgU8 = cv2.cvtColor(
+        np.array(target_img), cv2.COLOR_RGB2BGR
+    ).astype("uint8")
     try:
         gender = source_face["gender"]
         logger.info("Source Gender %s", gender)
         if source_face is not None:
-            result = target_img_cv2
+            result: CV2ImgU8 = target_img_cv2
             model_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), model)
-            face_swapper = getFaceSwapModel(model_path)
+            face_swapper = getFaceSwapModel(model_path, use_gpu=not is_cpu_provider())
             logger.info("Target faces count : %s", len(target_faces))
 
             for i, swapped_face in enumerate(target_faces):
@@ -679,9 +686,9 @@ def process_image_unit(
     model: str,
     unit: FaceSwapUnitSettings,
     image: PILImage,
-    info: str = None,
+    info: Optional[str] = None,
     force_blend: bool = False,
-) -> List[Tuple[PILImage, str]]:
+) -> List[Tuple[PILImage, Optional[str]]]:
     """Process one image and return a List of (image, info) (one if blended, many if not).
 
     Args:
@@ -722,7 +729,9 @@ def process_image_unit(
                 sort_by_face_size=unit.sort_by_size,
             )
 
-            target_faces = filter_faces(faces, filtering_options=face_filtering_options)
+            target_faces: List[Face] = filter_faces(
+                all_faces=faces, filtering_options=face_filtering_options
+            )
 
             # Apply pre-inpainting to image
             if unit.pre_inpainting.inpainting_denoising_strengh > 0:
@@ -732,13 +741,11 @@ def process_image_unit(
 
             save_img_debug(image, "Before swap")
             result: ImageResult = swap_face(
-                reference_face=reference_face,
                 source_face=src_face,
                 target_img=current_image,
                 target_faces=target_faces,
                 model=model,
                 swapping_options=unit.swapping_options,
-                compute_similarity=unit.compute_similarity,
             )
             # Apply post-inpainting to image
             if unit.post_inpainting.inpainting_denoising_strengh > 0:

@@ -83,7 +83,7 @@ def generate_face_mask(face_image: np.ndarray, device: torch.device) -> np.ndarr
         convert_bgr_to_rgb=True,
         use_float32=True,
     )
-    normalize(face_input, (0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True)
+    normalize(face_input, (0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True)  # type: ignore
     assert isinstance(face_input, torch.Tensor)
     face_input = torch.unsqueeze(face_input, 0).to(device)
 

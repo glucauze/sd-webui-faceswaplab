@@ -1,9 +1,9 @@
 from typing import List
 from scripts.faceswaplab_ui.faceswaplab_inpainting_ui import face_inpainting_ui
-from scripts.faceswaplab_utils.face_checkpoints_utils import get_face_checkpoints
+from scripts.faceswaplab_swapping.face_checkpoints import get_face_checkpoints
 import gradio as gr
-from modules.shared import opts
 from modules import shared
+from scripts.faceswaplab_utils.sd_utils import get_sd_option
 
 
 def faceswap_unit_advanced_options(
@@ -17,7 +17,7 @@ def faceswap_unit_advanced_options(
             face_restorer_name = gr.Radio(
                 label="Restore Face",
                 choices=["None"] + [x.name() for x in shared.face_restorers],
-                value=lambda: opts.data.get(
+                value=lambda: get_sd_option(
                     "faceswaplab_default_upscaled_swapper_face_restorer",
                     "None",
                 ),
@@ -28,7 +28,7 @@ def faceswap_unit_advanced_options(
                 face_restorer_visibility = gr.Slider(
                     0,
                     1,
-                    value=lambda: opts.data.get(
+                    value=lambda: get_sd_option(
                         "faceswaplab_default_upscaled_swapper_face_restorer_visibility",
                         1.0,
                     ),
@@ -39,7 +39,7 @@ def faceswap_unit_advanced_options(
                 codeformer_weight = gr.Slider(
                     0,
                     1,
-                    value=lambda: opts.data.get(
+                    value=lambda: get_sd_option(
                         "faceswaplab_default_upscaled_swapper_face_restorer_weight", 1.0
                     ),
                     step=0.001,
@@ -48,7 +48,7 @@ def faceswap_unit_advanced_options(
                 )
         upscaler_name = gr.Dropdown(
             choices=[upscaler.name for upscaler in shared.sd_upscalers],
-            value=lambda: opts.data.get(
+            value=lambda: get_sd_option(
                 "faceswaplab_default_upscaled_swapper_upscaler", ""
             ),
             label="Upscaler",
@@ -56,7 +56,7 @@ def faceswap_unit_advanced_options(
         )
 
         improved_mask = gr.Checkbox(
-            lambda: opts.data.get(
+            lambda: get_sd_option(
                 "faceswaplab_default_upscaled_swapper_improved_mask", False
             ),
             interactive=True,
@@ -64,7 +64,7 @@ def faceswap_unit_advanced_options(
             elem_id=f"{id_prefix}_face{unit_num}_improved_mask",
         )
         color_corrections = gr.Checkbox(
-            lambda: opts.data.get(
+            lambda: get_sd_option(
                 "faceswaplab_default_upscaled_swapper_fixcolor", False
             ),
             interactive=True,
@@ -72,7 +72,7 @@ def faceswap_unit_advanced_options(
             elem_id=f"{id_prefix}_face{unit_num}_color_corrections",
         )
         sharpen_face = gr.Checkbox(
-            lambda: opts.data.get(
+            lambda: get_sd_option(
                 "faceswaplab_default_upscaled_swapper_sharpen", False
             ),
             interactive=True,
@@ -82,7 +82,7 @@ def faceswap_unit_advanced_options(
         erosion_factor = gr.Slider(
             0.0,
             10.0,
-            lambda: opts.data.get("faceswaplab_default_upscaled_swapper_erosion", 1.0),
+            lambda: get_sd_option("faceswaplab_default_upscaled_swapper_erosion", 1.0),
             step=0.01,
             label="Upscaled swapper mask erosion factor, 1 = default behaviour.",
             elem_id=f"{id_prefix}_face{unit_num}_erosion_factor",

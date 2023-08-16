@@ -17,7 +17,7 @@ def upscale_img(image: PILImage, pp_options: PostProcessingOptions) -> PILImage:
             pp_options.scale,
         )
         result_image = pp_options.upscaler.scaler.upscale(
-            image, pp_options.scale, pp_options.upscaler.data_path
+            image, pp_options.scale, pp_options.upscaler.data_path  # type: ignore
         )
 
         # FIXME : Could be better (managing images whose dimensions are not multiples of 16)

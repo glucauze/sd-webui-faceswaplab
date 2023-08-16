@@ -14,6 +14,10 @@ def dataclass_from_flat_list(cls: type, values: Tuple[Any, ...]) -> Any:
             init_values[field.name] = field.type(*inner_values)
             idx += len(inner_values)
         else:
+            if idx >= len(values):
+                raise IndexError(
+                    f"Expected more values for dataclass {cls}. Current index: {idx}, values length: {len(values)}"
+                )
             value = values[idx]
             init_values[field.name] = value
             idx += 1

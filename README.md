@@ -14,7 +14,7 @@ While FaceSwapLab is still under development, it has reached a good level of sta
 
 In short:
 
-+ **Ethical Guideline:** This extension should not be forked to create a public, easy way to bypass NSFW filtering. If you modify it for this purpose, keep it private, or you'll be banned.
++ **Ethical Guideline:**  NSFW is now configurable due to performance issue. Please don't use this to do harm.
 + **License:** This software is distributed under the terms of the GNU Affero General Public License (AGPL), version 3 or later.
 + **Model License:** This software uses InsightFace's pre-trained models, which are available for non-commercial research purposes only.
 
@@ -24,6 +24,35 @@ More on this here : https://glucauze.github.io/sd-webui-faceswaplab/
 
 + Older versions of gradio don't work well with the extension. See this bug : https://github.com/glucauze/sd-webui-faceswaplab/issues/5
 
+## Quick Start
+
+### Simple
+
+1. Put a face in the reference.
+2. Select a face number.
+3. Select "Enable."
+4. Select "CodeFormer" in **Global Post-Processing** tab.
+
+Once you're happy with some results but want to improve, the next steps are to:
+
++ Use advanced settings in face units (which are not as complex as they might seem, it's basically fine tuning post-processing for each faces).
++ Use pre/post inpainting to tweak the image a bit for more natural results.
+
+### Better 
+
+1. Put a face in the reference.
+2. Select a face number.
+3. Select "Enable."
+
+4. In **Post-Processing** accordeon:
+    + Select "CodeFormer" 
+    + Select "LDSR" or a faster model "003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN" in upscaler. See [here for a list of upscalers](https://github.com/glucauze/sd-webui-faceswaplab/discussions/29). 
+    + Use sharpen, color_correction and improved mask
+
+5. Disable "CodeFormer" in **Global Post-Processing** tab (otherwise it will be applied twice)
+
+Don't hesitate to share config in the [discussion section](https://github.com/glucauze/sd-webui-faceswaplab/discussions).
+
 ### Features
 
 + **Face Unit Concept**: Similar to controlNet, the program introduces the concept of a face unit. You can configure up to 10 units (3 units are the default setting) in the program settings (sd).
@@ -31,6 +60,8 @@ More on this here : https://glucauze.github.io/sd-webui-faceswaplab/
 + **Vladmantic and a1111 Support**
 
 + **Batch Processing**
+
++ **GPU**
 
 + **Inpainting Fixes** : supports “only masked” and mask inpainting.
 
@@ -62,7 +93,7 @@ More on this here : https://glucauze.github.io/sd-webui-faceswaplab/
 
 + **Upscaled Inswapper**: The program now includes an upscaled inswapper option, which improves results by incorporating upsampling, sharpness adjustment, and color correction before face is merged to the original image.
 
-+ **API with typing support** :
++ **API with typing support**
 
 
 ## Installation
