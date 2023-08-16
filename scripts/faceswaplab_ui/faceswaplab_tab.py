@@ -156,16 +156,18 @@ def build_face_checkpoint_and_save(
         if not batch_files:
             logger.error("No face found")
             return None  # type: ignore (Optional not really supported by old gradio)
-        images = [Image.open(file.name) for file in batch_files]  # type: ignore
-        preview_image = face_checkpoints.build_face_checkpoint_and_save(
-            images, name, overwrite=overwrite
+        images: list[PILImage] = [Image.open(file.name) for file in batch_files]  # type: ignore
+        preview_image: PILImage | None = (
+            face_checkpoints.build_face_checkpoint_and_save(
+                images=images, name=name, overwrite=overwrite
+            )
         )
     except Exception as e:
         logger.error("Failed to build checkpoint %s", e)
 
         traceback.print_exc()
         return None  # type: ignore
-    return preview_image
+    return preview_image  # type: ignore
 
 
 def explore_onnx_faceswap_model(model_path: str) -> pd.DataFrame:

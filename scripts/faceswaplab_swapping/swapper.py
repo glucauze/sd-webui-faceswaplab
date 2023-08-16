@@ -141,7 +141,7 @@ def batch_process(
     src_images: List[Union[PILImage, str]],  # image or filename
     save_path: Optional[str],
     units: List[FaceSwapUnitSettings],
-    postprocess_options: PostProcessingOptions,
+    postprocess_options: Optional[PostProcessingOptions],
 ) -> Optional[List[PILImage]]:
     """
     Process a batch of images, apply face swapping according to the given settings, and optionally save the resulting images to a specified path.
@@ -527,7 +527,7 @@ def get_or_default(l: List[Any], index: int, default: Any) -> Any:
     return l[index] if index < len(l) else default
 
 
-def get_faces_from_img_files(images: List[PILImage]) -> List[Optional[CV2ImgU8]]:
+def get_faces_from_img_files(images: List[PILImage]) -> List[Face]:
     """
     Extracts faces from a list of image files.
 
@@ -539,7 +539,7 @@ def get_faces_from_img_files(images: List[PILImage]) -> List[Optional[CV2ImgU8]]
 
     """
 
-    faces = []
+    faces: List[Face] = []
 
     if len(images) > 0:
         for img in images:
@@ -598,7 +598,6 @@ def swap_face(
     target_faces: List[Face],
     model: str,
     swapping_options: Optional[InswappperOptions],
-    compute_similarity: bool = True,
 ) -> ImageResult:
     """
     Swaps faces in the target image with the source face.
@@ -680,9 +679,9 @@ def process_image_unit(
     model: str,
     unit: FaceSwapUnitSettings,
     image: PILImage,
-    info: str = None,
+    info: Optional[str] = None,
     force_blend: bool = False,
-) -> List[Tuple[PILImage, str]]:
+) -> List[Tuple[PILImage, Optional[str]]]:
     """Process one image and return a List of (image, info) (one if blended, many if not).
 
     Args:
@@ -723,7 +722,9 @@ def process_image_unit(
                 sort_by_face_size=unit.sort_by_size,
             )
 
-            target_faces = filter_faces(faces, filtering_options=face_filtering_options)
+            target_faces: List[Face] = filter_faces(
+                all_faces=faces, filtering_options=face_filtering_options
+            )
 
             # Apply pre-inpainting to image
             if unit.pre_inpainting.inpainting_denoising_strengh > 0:
@@ -738,7 +739,6 @@ def process_image_unit(
                 target_faces=target_faces,
                 model=model,
                 swapping_options=unit.swapping_options,
-                compute_similarity=unit.compute_similarity,
             )
             # Apply post-inpainting to image
             if unit.post_inpainting.inpainting_denoising_strengh > 0:
