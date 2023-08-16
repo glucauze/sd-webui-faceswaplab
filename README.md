@@ -61,6 +61,8 @@ Don't hesitate to share config in the [discussion section](https://github.com/gl
 
 + **Batch Processing**
 
++ **GPU**
+
 + **Inpainting Fixes** : supports “only masked” and mask inpainting.
 
 + **Performance Improvements**: The overall performance of the software has been enhanced.
@@ -91,7 +93,7 @@ Don't hesitate to share config in the [discussion section](https://github.com/gl
 
 + **Upscaled Inswapper**: The program now includes an upscaled inswapper option, which improves results by incorporating upsampling, sharpness adjustment, and color correction before face is merged to the original image.
 
-+ **API with typing support** :
++ **API with typing support**
 
 
 ## Installation

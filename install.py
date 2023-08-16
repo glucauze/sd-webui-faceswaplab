@@ -56,7 +56,7 @@ def check_install() -> None:
             except Exception as e:
                 print(e)
                 print(
-                    f"Warning: Failed to install {package}, faceswaplab will not work."
+                    f"Warning: Failed to install {package}, faceswaplab may not work. Try to restart server or install dependencies manually."
                 )
                 raise e
 
