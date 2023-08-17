@@ -15,7 +15,7 @@ from scripts.faceswaplab_swapping.upcaled_inswapper_options import InswappperOpt
 from scripts.faceswaplab_utils.imgutils import cv2_to_pil, pil_to_cv2
 from scripts.faceswaplab_utils.sd_utils import get_sd_option
 from scripts.faceswaplab_utils.typing import CV2ImgU8, Face
-from scripts.faceswaplab_utils.faceswaplab_logging import logger, save_img_debug
+from scripts.faceswaplab_utils.faceswaplab_logging import logger
 
 
 def get_upscaler() -> Optional[UpscalerData]:

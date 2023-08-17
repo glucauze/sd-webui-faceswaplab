@@ -5,6 +5,8 @@ permalink: /doc/
 toc: true
 ---
 
+You can also read the [doc discussion section](https://github.com/glucauze/sd-webui-faceswaplab/discussions/categories/guide-doc)
+
 ## TLDR: I Just Want Good Results:
 
 1. Put a face in the reference.
