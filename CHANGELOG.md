@@ -1,3 +1,11 @@
+# 1.2.2
+
++ Add NSFW filter option in settings (1 == disable)
++ Improve install speed
++ Install gpu requirements by default if --use-cpu is not used
++ Fix improved mask + color correction
++ Remove javascript, use https://github.com/w-e-w/sdwebui-close-confirmation-dialogue.git instead to prevent gradio from closing.
+
 # 1.2.1 :
 
 Add GPU support option : see https://github.com/glucauze/sd-webui-faceswaplab/pull/24
