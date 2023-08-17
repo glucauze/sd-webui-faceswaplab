@@ -15,7 +15,7 @@ from scripts.faceswaplab_swapping.upcaled_inswapper_options import InswappperOpt
 from scripts.faceswaplab_utils.imgutils import cv2_to_pil, pil_to_cv2
 from scripts.faceswaplab_utils.sd_utils import get_sd_option
 from scripts.faceswaplab_utils.typing import CV2ImgU8, Face
-from scripts.faceswaplab_utils.faceswaplab_logging import logger
+from scripts.faceswaplab_utils.faceswaplab_logging import logger, save_img_debug
 
 
 def get_upscaler() -> Optional[UpscalerData]:
@@ -216,18 +216,11 @@ class UpscaledINSwapper(INSwapper):
                         bgr_fake, inswapper_options=options, k=k
                     )
 
-                    if options.improved_mask:
-                        if k == 1:
-                            logger.warning(
-                                "Please note that improved mask does not work well without upscaling. Set upscaling to Lanczos at least if you want speed and want to use improved mask."
-                            )
+                    fake_diff: CV2ImgU8 = None  # type: ignore
 
-                        logger.info("improved_mask")
-                        mask = get_face_mask(aimg, bgr_fake)
-                        bgr_fake = merge_images_with_mask(aimg, bgr_fake, mask)
-
-                    # compute fake_diff before sharpen and color correction (better result)
-                    fake_diff = compute_diff(bgr_fake, aimg)
+                    if not options.improved_mask:
+                        # If improved mask is not used, we should compute before sharpen and color correction (better diff)
+                        fake_diff = compute_diff(bgr_fake, aimg=aimg)
 
                     if options.sharpen:
                         logger.info("sharpen")
@@ -243,6 +236,24 @@ class UpscaledINSwapper(INSwapper):
                             correction, cv2_to_pil(bgr_fake)
                         )
                         bgr_fake = pil_to_cv2(bgr_fake_pil)
+
+                    if options.improved_mask:
+                        if k == 1:
+                            logger.warning(
+                                "Please note that improved mask does not work well without upscaling. Set upscaling to Lanczos at least if you want speed and want to use improved mask."
+                            )
+
+                        logger.info("improved_mask")
+                        mask = get_face_mask(aimg, bgr_fake)
+                        # save_img_debug(cv2_to_pil(bgr_fake), "Before Mask")
+                        bgr_fake = merge_images_with_mask(aimg, bgr_fake, mask)
+                        # save_img_debug(cv2_to_pil(bgr_fake), "After Mask")
+
+                        fake_diff = compute_diff(bgr_fake, aimg=aimg)
+
+                    assert (
+                        fake_diff is not None
+                    ), "fake diff is None, this should not happen"
 
                     logger.info("*" * 80)
 
@@ -266,6 +277,7 @@ class UpscaledINSwapper(INSwapper):
                     (target_img.shape[1], target_img.shape[0]),
                     borderValue=0.0,
                 )
+
                 fake_diff = cv2.warpAffine(
                     fake_diff,
                     IM,
