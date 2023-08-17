@@ -5,7 +5,6 @@ import cv2
 import numpy as np
 from math import isqrt, ceil
 import torch
-from ifnude import detect
 from modules import processing
 import base64
 from collections import Counter
@@ -30,6 +29,8 @@ def check_against_nsfw(img: PILImage) -> bool:
     # For testing purpose :
     if NSFW_SCORE_THRESHOLD >= 1:
         return False
+
+    from ifnude import detect
 
     shapes: List[bool] = []
     chunks: List[Dict[str, Union[int, float]]] = detect(img)
