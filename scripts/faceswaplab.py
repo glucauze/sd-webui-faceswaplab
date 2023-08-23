@@ -109,7 +109,13 @@ class FaceSwapScript(scripts.Script):
                 components += faceswaplab_unit_ui.faceswap_unit_ui(is_img2img, i)
             post_processing = faceswaplab_tab.postprocessing_ui()
         # If the order is modified, the before_process should be changed accordingly.
-        return components + post_processing
+
+        components = components + post_processing
+        # Ask sd to not store in ui-config.json
+        for component in components:
+            setattr(component, "do_not_save_to_config", True)
+
+        return components
 
     def read_config(
         self, p: StableDiffusionProcessing, *components: Tuple[Any, ...]

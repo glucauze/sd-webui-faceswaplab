@@ -17,7 +17,7 @@ def faceswap_unit_advanced_options(
             face_restorer_name = gr.Radio(
                 label="Restore Face",
                 choices=["None"] + [x.name() for x in shared.face_restorers],
-                value=lambda: get_sd_option(
+                value=get_sd_option(
                     "faceswaplab_default_upscaled_swapper_face_restorer",
                     "None",
                 ),
@@ -28,7 +28,7 @@ def faceswap_unit_advanced_options(
                 face_restorer_visibility = gr.Slider(
                     0,
                     1,
-                    value=lambda: get_sd_option(
+                    value=get_sd_option(
                         "faceswaplab_default_upscaled_swapper_face_restorer_visibility",
                         1.0,
                     ),
@@ -39,7 +39,7 @@ def faceswap_unit_advanced_options(
                 codeformer_weight = gr.Slider(
                     0,
                     1,
-                    value=lambda: get_sd_option(
+                    value=get_sd_option(
                         "faceswaplab_default_upscaled_swapper_face_restorer_weight", 1.0
                     ),
                     step=0.001,
@@ -48,33 +48,25 @@ def faceswap_unit_advanced_options(
                 )
         upscaler_name = gr.Dropdown(
             choices=[upscaler.name for upscaler in shared.sd_upscalers],
-            value=lambda: get_sd_option(
-                "faceswaplab_default_upscaled_swapper_upscaler", ""
-            ),
+            value=get_sd_option("faceswaplab_default_upscaled_swapper_upscaler", ""),
             label="Upscaler",
             elem_id=f"{id_prefix}_face{unit_num}_upscaler",
         )
 
         improved_mask = gr.Checkbox(
-            lambda: get_sd_option(
-                "faceswaplab_default_upscaled_swapper_improved_mask", False
-            ),
+            get_sd_option("faceswaplab_default_upscaled_swapper_improved_mask", False),
             interactive=True,
             label="Use improved segmented mask (use pastenet to mask only the face)",
             elem_id=f"{id_prefix}_face{unit_num}_improved_mask",
         )
         color_corrections = gr.Checkbox(
-            lambda: get_sd_option(
-                "faceswaplab_default_upscaled_swapper_fixcolor", False
-            ),
+            get_sd_option("faceswaplab_default_upscaled_swapper_fixcolor", False),
             interactive=True,
             label="Use color corrections",
             elem_id=f"{id_prefix}_face{unit_num}_color_corrections",
         )
         sharpen_face = gr.Checkbox(
-            lambda: get_sd_option(
-                "faceswaplab_default_upscaled_swapper_sharpen", False
-            ),
+            get_sd_option("faceswaplab_default_upscaled_swapper_sharpen", False),
             interactive=True,
             label="sharpen face",
             elem_id=f"{id_prefix}_face{unit_num}_sharpen_face",
@@ -82,7 +74,7 @@ def faceswap_unit_advanced_options(
         erosion_factor = gr.Slider(
             0.0,
             10.0,
-            lambda: get_sd_option("faceswaplab_default_upscaled_swapper_erosion", 1.0),
+            get_sd_option("faceswaplab_default_upscaled_swapper_erosion", 1.0),
             step=0.01,
             label="Upscaled swapper mask erosion factor, 1 = default behaviour.",
             elem_id=f"{id_prefix}_face{unit_num}_erosion_factor",
@@ -137,7 +129,7 @@ def faceswap_unit_ui(
                     elem_id=f"{id_prefix}_face{unit_num}_refresh_checkpoints",
                 )
 
-                def refresh_fn(selected: str) -> None:
+                def refresh_fn(selected: str):
                     return gr.Dropdown.update(
                         value=selected, choices=get_face_checkpoints()
                     )
@@ -288,6 +280,10 @@ Otherwise, read the [doc](https://glucauze.github.io/sd-webui-faceswaplab/doc/) 
         + options
         + post_inpainting
     )
+
+    # Ask sd to not store in ui-config.json
+    for component in gradio_components:
+        setattr(component, "do_not_save_to_config", True)
 
     # If changed, you need to change FaceSwapUnitSettings accordingly
     # ORDER of parameters is IMPORTANT. It should match the result of FaceSwapUnitSettings
