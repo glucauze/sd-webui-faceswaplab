@@ -20,9 +20,7 @@ def check_configuration() -> None:
     models_dir = MODELS_DIR
     faces_dir = FACES_DIR
 
-    model_url = (
-        "https://huggingface.co/deepinsight/inswapper/resolve/main/inswapper_128.onnx"
-    )
+    model_url = "https://github.com/facefusion/facefusion-assets/releases/download/models/inswapper_128.onnx"
     model_name = os.path.basename(model_url)
     model_path = os.path.join(models_dir, model_name)
 
