@@ -1,3 +1,11 @@
+# 1.2.3
+
+Speed up ui : change the way default settings are manage by not storing them in ui-config.json
+
+Migration : YOU NEED TO recreate ui-config.json (delete) or at least remove any faceswaplab reference to be able to use default settings again.
+
+See this for explainations : https://github.com/AUTOMATIC1111/stable-diffusion-webui/issues/6109
+
 # 1.2.2
 
 + Add NSFW filter option in settings (1 == disable)

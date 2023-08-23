@@ -16,7 +16,7 @@ REFERENCE_PATH = os.path.join(
 )
 
 # Defining the version flag for the application
-VERSION_FLAG: str = "v1.2.2"
+VERSION_FLAG: str = "v1.2.3"
 # Defining the path for 'sd-webui-faceswaplab' inside the 'extensions' directory
 EXTENSION_PATH = os.path.join("extensions", "sd-webui-faceswaplab")
 

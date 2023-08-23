@@ -1,5 +1,7 @@
 # FaceSwapLab for a1111/Vlad
 
+V1.2.3 : Breaking change for settings, please read changelog.
+
 Please read the documentation here : https://glucauze.github.io/sd-webui-faceswaplab/ 
 
 You can also read the [doc discussion section](https://github.com/glucauze/sd-webui-faceswaplab/discussions/categories/guide-doc)

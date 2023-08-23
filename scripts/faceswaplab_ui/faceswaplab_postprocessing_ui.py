@@ -15,18 +15,19 @@ def postprocessing_ui() -> List[gr.components.Component]:
             face_restorer_name = gr.Radio(
                 label="Restore Face",
                 choices=["None"] + [x.name() for x in shared.face_restorers],
-                value=lambda: get_sd_option(
+                value=get_sd_option(
                     "faceswaplab_pp_default_face_restorer",
                     shared.face_restorers[0].name(),
                 ),
                 type="value",
                 elem_id="faceswaplab_pp_face_restorer",
             )
+
             with gr.Column():
                 face_restorer_visibility = gr.Slider(
                     0,
                     1,
-                    value=lambda: get_sd_option(
+                    value=get_sd_option(
                         "faceswaplab_pp_default_face_restorer_visibility", 1
                     ),
                     step=0.001,
@@ -36,7 +37,7 @@ def postprocessing_ui() -> List[gr.components.Component]:
                 codeformer_weight = gr.Slider(
                     0,
                     1,
-                    value=lambda: get_sd_option(
+                    value=get_sd_option(
                         "faceswaplab_pp_default_face_restorer_weight", 1
                     ),
                     step=0.001,
@@ -45,7 +46,7 @@ def postprocessing_ui() -> List[gr.components.Component]:
                 )
         upscaler_name = gr.Dropdown(
             choices=[upscaler.name for upscaler in shared.sd_upscalers],
-            value=lambda: get_sd_option("faceswaplab_pp_default_upscaler", "None"),
+            value=get_sd_option("faceswaplab_pp_default_upscaler", "None"),
             label="Upscaler",
             elem_id="faceswaplab_pp_upscaler",
         )
@@ -60,9 +61,7 @@ def postprocessing_ui() -> List[gr.components.Component]:
         upscaler_visibility = gr.Slider(
             0,
             1,
-            value=lambda: get_sd_option(
-                "faceswaplab_pp_default_upscaler_visibility", 1
-            ),
+            value=get_sd_option("faceswaplab_pp_default_upscaler_visibility", 1),
             step=0.1,
             label="Upscaler visibility (if scale = 1)",
             elem_id="faceswaplab_pp_upscaler_visibility",
@@ -123,7 +122,7 @@ def postprocessing_ui() -> List[gr.components.Component]:
                 label="sd model (experimental)",
                 elem_id="faceswaplab_pp_inpainting_sd_model",
             )
-    return [
+    components = [
         face_restorer_name,
         face_restorer_visibility,
         codeformer_weight,
@@ -138,3 +137,8 @@ def postprocessing_ui() -> List[gr.components.Component]:
         inpainting_sampler,
         inpaiting_model,
     ]
+
+    # Ask sd to not store in ui-config.json
+    for component in components:
+        setattr(component, "do_not_save_to_config", True)
+    return components
