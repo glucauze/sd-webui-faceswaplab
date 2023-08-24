@@ -2,12 +2,18 @@ import launch
 import os
 import sys
 import pkg_resources
-from modules import shared
 from packaging.version import parse
 
 
 def check_install() -> None:
-    use_gpu = not getattr(shared.cmd_opts, "use-cpu", False)
+    use_gpu = True
+    try:
+        from modules import shared
+
+        use_gpu = not getattr(shared.cmd_opts, "use-cpu", False)
+    except:
+        # On some platform previous lines may failed (modules.shared not initialized), just ignore and use GPU requirements
+        pass
 
     if use_gpu and sys.platform != "darwin":
         print("Faceswaplab : Use GPU requirements")
