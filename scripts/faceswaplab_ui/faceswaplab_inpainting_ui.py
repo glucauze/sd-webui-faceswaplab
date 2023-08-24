@@ -65,4 +65,7 @@ def face_inpainting_ui(
             inpaiting_model,
         ]
 
+        for component in gradio_components:
+            setattr(component, "do_not_save_to_config", True)
+
         return gradio_components
