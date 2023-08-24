@@ -63,16 +63,18 @@ inpainting_steps : {options.inpainting_steps}
                     "prompt": prompt,
                     "negative_prompt": negative_prompt,
                     "denoising_strength": options.inpainting_denoising_strengh,
-                    "override_settings": {
-                        "return_mask_composite": False,
-                        "save_images_before_face_restoration": False,
-                        "save_images_before_highres_fix": False,
-                        "save_images_before_color_correction": False,
-                        "save_mask": False,
-                        "save_mask_composite": False,
-                        "samples_save": False,
-                    },
                 }
+                # Remove the following as they are not always supported on all platform :
+                # "override_settings": {
+                #     "return_mask_composite": False,
+                #     "save_images_before_face_restoration": False,
+                #     "save_images_before_highres_fix": False,
+                #     "save_images_before_color_correction": False,
+                #     "save_mask": False,
+                #     "save_mask_composite": False,
+                #     "samples_save": False,
+                # },
+
                 current_model_checkpoint = shared.opts.sd_model_checkpoint
                 if options.inpainting_model and options.inpainting_model != "Current":
                     # Change checkpoint

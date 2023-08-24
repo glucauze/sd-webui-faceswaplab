@@ -111,9 +111,6 @@ class FaceSwapScript(scripts.Script):
         # If the order is modified, the before_process should be changed accordingly.
 
         components = components + post_processing
-        # Ask sd to not store in ui-config.json
-        for component in components:
-            setattr(component, "do_not_save_to_config", True)
 
         return components
 
