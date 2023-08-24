@@ -1,3 +1,13 @@
+# 1.2.5
+
+Allow seed selection in inpainting.
+
+# 1.2.4
+
+Fix default settings by marking only managed field as do_not_save.
+
+See the discussion here : https://github.com/glucauze/sd-webui-faceswaplab/issues/62
+
 # 1.2.3
 
 Speed up ui : change the way default settings are manage by not storing them in ui-config.json

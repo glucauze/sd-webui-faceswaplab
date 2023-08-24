@@ -63,6 +63,7 @@ inpainting_steps : {options.inpainting_steps}
                     "prompt": prompt,
                     "negative_prompt": negative_prompt,
                     "denoising_strength": options.inpainting_denoising_strengh,
+                    "seed": options.inpainting_seed,
                 }
                 # Remove the following as they are not always supported on all platform :
                 # "override_settings": {
