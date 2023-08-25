@@ -48,6 +48,7 @@ class InpaintingOptions(BaseModel):
     inpainting_model: str = Field(
         description="Inpainting model", examples=["Current"], default="Current"
     )
+    inpainting_seed: int = Field(description="Inpainting Seed", ge=-1, default=-1)
 
 
 class InswappperOptions(BaseModel):

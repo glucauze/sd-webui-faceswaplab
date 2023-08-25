@@ -12,6 +12,7 @@ class InpaintingOptions:
     inpainting_steps: int = 20
     inpainting_sampler: str = "Euler"
     inpainting_model: str = "Current"
+    inpainting_seed: int = -1
 
     @staticmethod
     def from_gradio(components: List[gr.components.Component]) -> "InpaintingOptions":
@@ -38,4 +39,5 @@ class InpaintingOptions:
             inpainting_steps=dto.inpainting_steps,
             inpainting_sampler=dto.inpainting_sampler,
             inpainting_model=dto.inpainting_model,
+            inpainting_seed=dto.inpainting_seed,
         )

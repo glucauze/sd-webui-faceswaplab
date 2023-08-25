@@ -249,19 +249,19 @@ Otherwise, read the [doc](https://glucauze.github.io/sd-webui-faceswaplab/doc/) 
                 elem_id=f"{id_prefix}_face{unit_num}_min_ref_similarity",
             )
 
-        pre_inpainting = face_inpainting_ui(
-            name="Pre-Inpainting (Before swapping)",
-            id_prefix=f"{id_prefix}_face{unit_num}_preinpainting",
-            description="Pre-inpainting sends face to inpainting before swapping",
-        )
+        with gr.Accordion(label="Pre-Inpainting (before swapping)", open=False):
+            gr.Markdown("Pre-inpainting sends face to inpainting before swapping")
+            pre_inpainting = face_inpainting_ui(
+                id_prefix=f"{id_prefix}_face{unit_num}_preinpainting",
+            )
 
         options = faceswap_unit_advanced_options(is_img2img, unit_num, id_prefix)
 
-        post_inpainting = face_inpainting_ui(
-            name="Post-Inpainting (After swapping)",
-            id_prefix=f"{id_prefix}_face{unit_num}_postinpainting",
-            description="Post-inpainting sends face to inpainting after swapping",
-        )
+        with gr.Accordion(label="Post-Inpainting (After swapping)", open=False):
+            gr.Markdown("Pre-inpainting sends face to inpainting before swapping")
+            post_inpainting = face_inpainting_ui(
+                id_prefix=f"{id_prefix}_face{unit_num}_postinpainting",
+            )
 
     gradio_components: List[gr.components.Component] = (
         [
