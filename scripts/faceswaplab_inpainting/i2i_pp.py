@@ -52,6 +52,7 @@ inpainting_steps : {options.inpainting_steps}
                 )
 
                 i2i_kwargs = {
+                    "init_images": [img],
                     "sampler_name": options.inpainting_sampler,
                     "do_not_save_samples": True,
                     "steps": options.inpainting_steps,
@@ -65,16 +66,6 @@ inpainting_steps : {options.inpainting_steps}
                     "denoising_strength": options.inpainting_denoising_strengh,
                     "seed": options.inpainting_seed,
                 }
-                # Remove the following as they are not always supported on all platform :
-                # "override_settings": {
-                #     "return_mask_composite": False,
-                #     "save_images_before_face_restoration": False,
-                #     "save_images_before_highres_fix": False,
-                #     "save_images_before_color_correction": False,
-                #     "save_mask": False,
-                #     "save_mask_composite": False,
-                #     "samples_save": False,
-                # },
 
                 current_model_checkpoint = shared.opts.sd_model_checkpoint
                 if options.inpainting_model and options.inpainting_model != "Current":
@@ -82,7 +73,7 @@ inpainting_steps : {options.inpainting_steps}
                     shared.opts.sd_model_checkpoint = options.inpainting_model
                     sd_models.select_checkpoint
                     sd_models.load_model()
-                i2i_p = StableDiffusionProcessingImg2Img([img], **i2i_kwargs)
+                i2i_p = StableDiffusionProcessingImg2Img(**i2i_kwargs)
                 i2i_processed = processing.process_images(i2i_p)
                 if options.inpainting_model and options.inpainting_model != "Current":
                     # Restore checkpoint

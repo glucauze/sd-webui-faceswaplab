@@ -32,6 +32,32 @@ More on this here : https://glucauze.github.io/sd-webui-faceswaplab/
 
 ## Quick Start
 
+Here are some gifs to explain (non cherry picked, just random pictures) : 
+
+## Simple Usage (roop like)
+
+This use codeformer on all faces (including non swapped)
+
+[simple.webm](https://github.com/glucauze/sd-webui-faceswaplab/assets/137925069/de00b685-d441-44f9-bae3-71cd7abef113)
+
+## Advanced options 
+
+This is use to improve results. This use upscaling and codeformer only on swapped faces
+
+[advanced.webm](https://github.com/glucauze/sd-webui-faceswaplab/assets/137925069/50630311-bd25-487f-871b-0a44eecd435d)
+
+## Inpainting 
+
+This add inpainting on faces : 
+
+[inpainting.webm](https://github.com/glucauze/sd-webui-faceswaplab/assets/137925069/3d3508e9-5be4-4566-8c41-8301b2d08355)
+
+## Build and use checkpoints : 
+
+[build.webm](https://github.com/glucauze/sd-webui-faceswaplab/assets/137925069/e84e9a3c-840d-4536-9fbb-09ed256406d7)
+
+
+
 ### Simple
 
 1. Put a face in the reference.
