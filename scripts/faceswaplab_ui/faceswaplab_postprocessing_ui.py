@@ -1,7 +1,6 @@
 from typing import List
 import gradio as gr
-import modules
-from modules import shared, sd_models
+from modules import shared
 from scripts.faceswaplab_postprocessing.postprocessing_options import InpaintingWhen
 from scripts.faceswaplab_utils.sd_utils import get_sd_option
 from scripts.faceswaplab_ui.faceswaplab_inpainting_ui import face_inpainting_ui
