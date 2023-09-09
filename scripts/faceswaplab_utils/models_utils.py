@@ -72,10 +72,16 @@ def get_current_swap_model() -> str:
         models = get_swap_models()
         model = models[0] if len(models) else None
     logger.info("Try to use model : %s", model)
-    if not os.path.isfile(model):  # type: ignore
-        logger.error("The model %s cannot be found or loaded", model)
+    try:
+        if not os.path.isfile(model):  # type: ignore
+            logger.error("The model %s cannot be found or loaded", model)
+            raise FileNotFoundError(
+                "No faceswap model found. Please add it to the faceswaplab directory."
+            )
+    except:
         raise FileNotFoundError(
-            "No faceswap model found. Please add it to the faceswaplab directory."
+            "Was not able to check model, please ensure the model is in the proper directory"
         )
+
     assert model is not None
     return model

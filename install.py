@@ -62,5 +62,11 @@ def check_install() -> None:
 
 import timeit
 
-check_time = timeit.timeit(check_install, number=1)
-print(check_time)
+try:
+    check_time = timeit.timeit(check_install, number=1)
+    print(check_time)
+except Exception as e:
+    print("FaceswapLab install failed", e)
+    print(
+        "You can try to install dependencies manually by activating venv and installing requirements.txt or requirements-gpu.txt"
+    )
