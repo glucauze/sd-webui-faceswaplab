@@ -33,7 +33,7 @@ from scripts.faceswaplab_postprocessing.postprocessing_options import (
     PostProcessingOptions,
 )
 from scripts.faceswaplab_utils.models_utils import get_current_swap_model
-from scripts.faceswaplab_utils.typing import CV2ImgU8, PILImage, Face
+from scripts.faceswaplab_utils.typing import CV2ImgU8, Gender, PILImage, Face
 from scripts.faceswaplab_inpainting.i2i_pp import img2img_diffusion
 from modules import shared
 import onnxruntime
@@ -559,7 +559,7 @@ def get_faces_from_img_files(images: List[PILImage]) -> List[Face]:
     return faces
 
 
-def blend_faces(faces: List[Face]) -> Optional[Face]:
+def blend_faces(faces: List[Face], gender: Gender = Gender.AUTO) -> Optional[Face]:
     """
     Blends the embeddings of multiple faces into a single face.
 
@@ -587,10 +587,19 @@ def blend_faces(faces: List[Face]) -> Optional[Face]:
         # Compute the mean of all embeddings
         blended_embedding = np.mean(embeddings, axis=0)
 
+        if gender == Gender.AUTO:
+            int_gender: int = faces[0].gender  # type: ignore
+        else:
+            int_gender: int = gender.value
+
+        assert -1 < int_gender < 2, "wrong gender"
+
+        logger.info("Int Gender : %s", int_gender)
+
         # Create a new Face object using the properties of the first face in the list
         # Assign the blended embedding to the blended Face object
         blended = ISFace(
-            embedding=blended_embedding, gender=faces[0].gender, age=faces[0].age
+            embedding=blended_embedding, gender=int_gender, age=faces[0].age
         )
 
         return blended

@@ -73,14 +73,14 @@ def get_current_swap_model() -> str:
         model = models[0] if len(models) else None
     logger.info("Try to use model : %s", model)
     try:
-        if not os.path.isfile(model):  # type: ignore
+        if not model or not os.path.isfile(model):  # type: ignore
             logger.error("The model %s cannot be found or loaded", model)
             raise FileNotFoundError(
-                "No faceswap model found. Please add it to the faceswaplab directory."
+                "No faceswap model found. Please add it to the faceswaplab directory. Ensure the model is in the proper directory (<sdwebui>/models/faceswaplab/inswapper_128.onnx)"
             )
     except:
         raise FileNotFoundError(
-            "Was not able to check model, please ensure the model is in the proper directory"
+            "No faceswap model found. Please add it to the faceswaplab directory. Ensure the model is in the proper directory (<sdwebui>/models/faceswaplab/inswapper_128.onnx)"
         )
 
     assert model is not None

@@ -137,7 +137,7 @@ def analyse_faces(image: PILImage, det_threshold: float = 0.5) -> Optional[str]:
 
 
 def build_face_checkpoint_and_save(
-    batch_files: List[gr.File], name: str, overwrite: bool
+    batch_files: List[gr.File], name: str, str_gender: str, overwrite: bool
 ) -> PILImage:
     """
     Builds a face checkpoint using the provided image files, performs face swapping,
@@ -156,10 +156,13 @@ def build_face_checkpoint_and_save(
         if not batch_files:
             logger.error("No face found")
             return None  # type: ignore (Optional not really supported by old gradio)
+
+        gender = getattr(Gender, str_gender)
+        logger.info("Choosen gender : %s", gender)
         images: list[PILImage] = [Image.open(file.name) for file in batch_files]  # type: ignore
         preview_image: PILImage | None = (
             face_checkpoints.build_face_checkpoint_and_save(
-                images=images, name=name, overwrite=overwrite
+                images=images, name=name, overwrite=overwrite, gender=gender
             )
         )
     except Exception as e:
@@ -265,6 +268,13 @@ def tools_ui() -> None:
                 placeholder="Name of the character",
                 label="Name of the character",
                 elem_id="faceswaplab_build_character_name",
+            )
+            build_gender = gr.Dropdown(
+                value=Gender.AUTO.name,
+                choices=[e.name for e in Gender],
+                placeholder="Gender of the character",
+                label="Gender of the character",
+                elem_id="faceswaplab_build_character_gender",
             )
             build_overwrite = gr.Checkbox(
                 False,
@@ -387,7 +397,7 @@ def tools_ui() -> None:
     compare_btn.click(compare, inputs=[img1, img2], outputs=[compare_result_text])
     generate_checkpoint_btn.click(
         build_face_checkpoint_and_save,
-        inputs=[build_batch_files, build_name, build_overwrite],
+        inputs=[build_batch_files, build_name, build_gender, build_overwrite],
         outputs=[preview],
     )
     extract_btn.click(

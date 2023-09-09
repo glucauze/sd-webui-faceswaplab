@@ -25,21 +25,26 @@ def check_configuration() -> None:
     model_path = os.path.join(models_dir, model_name)
 
     def download(url: str, path: str) -> None:
-        request = urllib.request.urlopen(url)
-        total = int(request.headers.get("Content-Length", 0))
-        with tqdm(
-            total=total,
-            desc="Downloading inswapper model",
-            unit="B",
-            unit_scale=True,
-            unit_divisor=1024,
-        ) as progress:
-            urllib.request.urlretrieve(
-                url,
-                path,
-                reporthook=lambda count, block_size, total_size: progress.update(
-                    block_size
-                ),
+        try:
+            request = urllib.request.urlopen(url)
+            total = int(request.headers.get("Content-Length", 0))
+            with tqdm(
+                total=total,
+                desc="Downloading inswapper model",
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+            ) as progress:
+                urllib.request.urlretrieve(
+                    url,
+                    path,
+                    reporthook=lambda count, block_size, total_size: progress.update(
+                        block_size
+                    ),
+                )
+        except:
+            logger.error(
+                "Failed to download inswapper_128.onnx model, please download it manually and put it in the (<sdwebui>/models/faceswaplab/inswapper_128.onnx) directory"
             )
 
     os.makedirs(models_dir, exist_ok=True)

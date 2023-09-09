@@ -39,6 +39,7 @@ def sanitize_name(name: str) -> str:
 def build_face_checkpoint_and_save(
     images: List[PILImage],
     name: str,
+    gender: Gender = Gender.AUTO,
     overwrite: bool = False,
     path: Optional[str] = None,
 ) -> Optional[PILImage]:
@@ -64,7 +65,7 @@ def build_face_checkpoint_and_save(
             logger.error("No source faces found")
             return None
 
-        blended_face: Optional[Face] = swapper.blend_faces(faces)
+        blended_face: Optional[Face] = swapper.blend_faces(faces, gender=gender)
         preview_path = os.path.join(
             scripts.basedir(), "extensions", "sd-webui-faceswaplab", "references"
         )
