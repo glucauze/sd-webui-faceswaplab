@@ -14,7 +14,6 @@ from scripts.faceswaplab_utils import imgutils
 from scripts.faceswaplab_utils.models_utils import get_swap_models
 import traceback
 
-import dill as pickle  # will be removed in future versions
 from scripts.faceswaplab_swapping import swapper
 from pprint import pformat
 import re
@@ -40,6 +39,7 @@ def sanitize_name(name: str) -> str:
 def build_face_checkpoint_and_save(
     images: List[PILImage],
     name: str,
+    gender: Gender = Gender.AUTO,
     overwrite: bool = False,
     path: Optional[str] = None,
 ) -> Optional[PILImage]:
@@ -65,7 +65,7 @@ def build_face_checkpoint_and_save(
             logger.error("No source faces found")
             return None
 
-        blended_face: Optional[Face] = swapper.blend_faces(faces)
+        blended_face: Optional[Face] = swapper.blend_faces(faces, gender=gender)
         preview_path = os.path.join(
             scripts.basedir(), "extensions", "sd-webui-faceswaplab", "references"
         )
@@ -174,20 +174,13 @@ def load_face(name: str) -> Optional[Face]:
 
     if filename.endswith(".pkl"):
         logger.warning(
-            "Pkl files for faces are deprecated to enhance safety, they will be unsupported in future versions."
+            "Pkl files for faces are deprecated to enhance safety, you need to convert them"
         )
         logger.warning("The file will be converted to .safetensors")
         logger.warning(
             "You can also use this script https://gist.github.com/glucauze/4a3c458541f2278ad801f6625e5b9d3d"
         )
-        with open(filename, "rb") as file:
-            logger.info("Load pkl")
-            face = Face(pickle.load(file))
-            logger.warning(
-                "Convert to safetensors, you can remove the pkl version once you have ensured that the safetensor is working"
-            )
-            save_face(face, filename.replace(".pkl", ".safetensors"))
-        return face
+        return None
 
     elif filename.endswith(".safetensors"):
         face = {}
