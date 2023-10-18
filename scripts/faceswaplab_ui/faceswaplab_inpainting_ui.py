@@ -11,7 +11,7 @@ def face_inpainting_ui(id_prefix: str = "faceswaplab") -> List[gr.components.Com
         0,
         step=0.01,
         elem_id=f"{id_prefix}_pp_inpainting_denoising_strength",
-        label="Denoising strenght",
+        label="Denoising strength",
     )
 
     inpainting_denoising_prompt = gr.Textbox(
