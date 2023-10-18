@@ -158,7 +158,7 @@ def build_face_checkpoint_and_save(
             return None  # type: ignore (Optional not really supported by old gradio)
 
         gender = getattr(Gender, str_gender)
-        logger.info("Choosen gender : %s", gender)
+        logger.info("Chosen gender : %s", gender)
         images: list[PILImage] = [Image.open(file.name) for file in batch_files]  # type: ignore
         preview_image: PILImage | None = (
             face_checkpoints.build_face_checkpoint_and_save(

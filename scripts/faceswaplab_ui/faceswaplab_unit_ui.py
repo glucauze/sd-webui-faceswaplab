@@ -190,7 +190,7 @@ def faceswap_unit_ui(
                 elem_id=f"{id_prefix}_face{unit_num}_reference_face_index",
             )
             gr.Markdown(
-                """Configure swapping. Swapping can occure before img2img, after or both :""",
+                """Configure swapping. Swapping can occur before img2img, after or both :""",
                 visible=is_img2img,
             )
             swap_in_source = gr.Checkbox(
@@ -258,7 +258,7 @@ Otherwise, read the [doc](https://glucauze.github.io/sd-webui-faceswaplab/doc/) 
         options = faceswap_unit_advanced_options(is_img2img, unit_num, id_prefix)
 
         with gr.Accordion(label="Post-Inpainting (After swapping)", open=False):
-            gr.Markdown("Pre-inpainting sends face to inpainting before swapping")
+            gr.Markdown("Post-inpainting sends face to inpainting after swapping")
             post_inpainting = face_inpainting_ui(
                 id_prefix=f"{id_prefix}_face{unit_num}_postinpainting",
             )
