@@ -37,7 +37,7 @@ class InpaintingOptions(BaseModel):
     )
     inpainting_steps: int = Field(
         description="Inpainting steps",
-        examples=["Portrait of a [gender]"],
+        examples=[25],
         ge=1,
         le=150,
         default=20,
