@@ -1,5 +1,6 @@
 cython
 ifnude
+albumentations==1.4.3
 insightface==0.7.3
 onnx>=1.14.0
 protobuf>=3.20.2
