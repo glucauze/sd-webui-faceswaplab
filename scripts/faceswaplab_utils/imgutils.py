@@ -13,37 +13,6 @@ from scripts.faceswaplab_utils.typing import BoxCoords, CV2ImgU8, PILImage
 from scripts.faceswaplab_utils.faceswaplab_logging import logger
 
 
-def check_against_nsfw(img: PILImage) -> bool:
-    """
-    Check if an image exceeds the Not Safe for Work (NSFW) score.
-
-    Parameters:
-    img (PILImage): The image to be checked.
-
-    Returns:
-    bool: True if any part of the image is considered NSFW, False otherwise.
-    """
-
-    NSFW_SCORE_THRESHOLD = get_sd_option("faceswaplab_nsfw_threshold", 0.7)
-
-    # For testing purpose :
-    if NSFW_SCORE_THRESHOLD >= 1:
-        return False
-
-    from ifnude import detect
-
-    shapes: List[bool] = []
-    chunks: List[Dict[str, Union[int, float]]] = detect(img)
-
-    for chunk in chunks:
-        logger.debug(
-            f"chunck score {chunk['score']}, threshold : {NSFW_SCORE_THRESHOLD}"
-        )
-        shapes.append(chunk["score"] > NSFW_SCORE_THRESHOLD)
-
-    return any(shapes)
-
-
 def pil_to_cv2(pil_img: PILImage) -> CV2ImgU8:
     """
     Convert a PIL Image into an OpenCV image (cv2).

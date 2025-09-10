@@ -22,7 +22,6 @@ from scripts.faceswaplab_swapping import upscaled_inswapper
 from scripts.faceswaplab_swapping.upcaled_inswapper_options import InswappperOptions
 from scripts.faceswaplab_utils.imgutils import (
     pil_to_cv2,
-    check_against_nsfw,
 )
 from scripts.faceswaplab_utils.faceswaplab_logging import logger, save_img_debug
 from scripts import faceswaplab_globals
@@ -713,8 +712,6 @@ def process_image_unit(
     if unit.enable:
         faces = get_faces(pil_to_cv2(image))
 
-        if check_against_nsfw(image):
-            return [(image, info)]
         if not unit.blend_faces and not force_blend:
             src_faces = unit.faces
             logger.info(f"will generate {len(src_faces)} images")
